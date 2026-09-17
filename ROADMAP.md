@@ -2,7 +2,7 @@
 
 Sumber: `05_IMPLEMENTATION_PLAN.md`. Dokumen ini yang dijaga up-to-date (centang checklist) seiring progres; `05_IMPLEMENTATION_PLAN.md` tetap sebagai arsip proposal awal.
 
-Status keseluruhan: **Fase 1 (Foundation) — sedang berjalan**
+Status keseluruhan: **Fase 1 (Foundation) selesai — Fase 2 (Authentication) dimulai**
 
 ## PHASE 0 — Discovery & Architecture ✅ Selesai
 - [x] Technology evaluation
@@ -12,20 +12,21 @@ Status keseluruhan: **Fase 1 (Foundation) — sedang berjalan**
 - [x] Implementation plan
 - [x] Persetujuan stack (Tauri v2 + React + TS + SQLite) dari user
 
-## PHASE 1 — Foundation 🔄 Sedang berjalan
-- [ ] Scaffold project Tauri + React + TypeScript
-- [ ] Setup Tailwind CSS
-- [ ] Pasang plugin: sql, dialog, fs, opener
-- [ ] Struktur folder modul (`src/modules/`, `src/core/`, `src/database/`, `src/shared/`)
-- [ ] Migration runner custom (TypeScript)
-- [ ] Migration awal: skema baseline (roles, users, permit_types, custom_field_*, permit_records, document_links, permit_status, status_rules, folder_templates, audit_logs, imports, import_errors, exports, app_settings, storage_settings, backup_records, sessions)
-- [ ] Seed data awal: roles (ADMIN/OPERATOR/VIEWER), permit_status
-- [ ] Setup lint (ESLint) + typecheck (tsc) + test runner (Vitest)
-- [ ] Verifikasi: app jalan, database file ter-generate, migration ter-apply
-- [ ] `docs/` awal: ARCHITECTURE.md, DATABASE.md, ERD.md (turunan proposal 02/03)
-- [ ] Git repo + commit awal
+## PHASE 1 — Foundation ✅ Selesai
+- [x] Scaffold project Tauri + React + TypeScript
+- [x] Setup Tailwind CSS (v4, via plugin Vite — bukan `init -p`, sudah tidak ada di v4)
+- [x] Pasang plugin: sql, dialog, fs, opener (Rust + JS package dua-duanya, lihat catatan di CHANGELOG)
+- [x] Struktur folder modul (`src/modules/`, `src/database/`, dst.)
+- [x] Migration runner custom (TypeScript, berbasis `PRAGMA user_version`)
+- [x] Migration awal (`0001_init.sql`): skema baseline 19 tabel (roles, users, permit_types, custom_field_*, permit_records, document_links, permit_status, status_rules, folder_templates, audit_logs, imports, import_errors, exports, app_settings, storage_settings, backup_records, sessions), idempotent (`IF NOT EXISTS`)
+- [x] Seed data awal: roles (ADMIN/OPERATOR/VIEWER), permit_status
+- [x] Setup lint (ESLint flat config) + typecheck (tsc) + test runner (Vitest, `--passWithNoTests`)
+- [x] Verifikasi: app jalan, database file ter-generate, migration ter-apply, tanpa error
+- [x] Git repo + commit awal (`docs/` sengaja di-gitignore, lihat CLAUDE.md §13)
 
-## PHASE 2 — Authentication P0
+> `docs/ARCHITECTURE.md`, `DATABASE.md`, `ERD.md` versi lokal (tidak di-commit) menyusul opsional — tidak menghalangi Fase 2.
+
+## PHASE 2 — Authentication P0 🔄 Sedang berjalan
 - [ ] Tabel & seed user admin pertama (argon2 hash)
 - [ ] Login/logout, session, session timeout
 - [ ] Role & permission check di service layer
