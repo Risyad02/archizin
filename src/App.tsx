@@ -1,20 +1,49 @@
 import { useEffect, useState } from "react";
-import { getDb } from "./database/db";
+import { needsInitialSetup } from "./modules/auth/service";
+import { SetupAdminPage } from "./modules/auth/pages/SetupAdminPage";
+import { LoginPage } from "./modules/auth/pages/LoginPage";
+import { useAuthStore } from "./store/authStore";
+import "./App.css";
+
+type BootState = "loading" | "needs-setup" | "ready";
 
 function App() {
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [boot, setBoot] = useState<BootState>("loading");
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const setUser = useAuthStore((s) => s.setUser);
 
   useEffect(() => {
-    getDb()
-      .then(() => setReady(true))
-      .catch((e) => setError(String(e)));
+    needsInitialSetup().then((needsSetup) => {
+      setBoot(needsSetup ? "needs-setup" : "ready");
+    });
   }, []);
 
-  if (error) return <div>Gagal inisialisasi database: {error}</div>;
-  if (!ready) return <div>Menyiapkan database…</div>;
+  if (boot === "loading") {
+    return <div className="flex min-h-screen items-center justify-center">Memuat...</div>;
+  }
 
-  return <div>ArchIzin — Foundation siap. Database ter-migrasi.</div>;
+  if (boot === "needs-setup") {
+    return <SetupAdminPage onDone={() => setBoot("ready")} />;
+  }
+
+  if (!currentUser) {
+    return <LoginPage />;
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="text-center">
+        <p className="mb-2 text-lg">Selamat datang, {currentUser.full_name}</p>
+        <p className="mb-4 text-sm text-slate-500">Role: {currentUser.role}</p>
+        <button
+          className="rounded bg-slate-200 px-4 py-2"
+          onClick={() => setUser(null)}
+        >
+          Keluar
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default App;

@@ -6,7 +6,7 @@ Instruksi ini WAJIB dibaca oleh AI coding agent (atau developer manapun) sebelum
 
 ArchIzin — aplikasi desktop offline untuk mengelola data perizinan, arsip/dokumen, rekapitulasi, pencarian, monitoring masa berlaku izin, dan pelaporan bagi perangkat daerah. Single device di awal, arsitektur disiapkan untuk berkembang ke LAN/multi-user/API di masa depan tanpa rewrite besar.
 
-Status saat ini: **Fase 1 (Foundation) selesai, Fase 2 (Authentication) sedang berjalan.** Cek `ROADMAP.md` untuk status detail per fase.
+Status saat ini: **Fase 2 (Authentication) selesai, Fase 3 (Permit Types & Custom Fields) sedang berjalan.** Cek `ROADMAP.md` untuk status detail per fase.
 
 Dokumen acuan wajib dibaca sebelum kerja di area terkait:
 - `docs/ARCHITECTURE.md` (turunan dari `02_ARCHITECTURE_PROPOSAL.md`) — versi lokal, tidak di-commit ke git (lihat §13)
@@ -44,7 +44,7 @@ UI (React) → Application Service (TS) → Repository (TS, SQL parametrized) �
 ## 5. Aturan Keamanan
 
 - Semua akses file/URL dari data user (`document_url`, path folder) HARUS divalidasi (tolak path traversal `..`, karakter ilegal) sebelum diteruskan ke plugin `fs`/`opener`.
-- Password di-hash dengan argon2 — tidak pernah disimpan/di-log plaintext.
+- Password di-hash dengan argon2 (crate `argon2 = { version = "0.5.3", features = ["std"] }` — versi ini WAJIB dipin persis, lihat §13) — tidak pernah disimpan/di-log plaintext.
 - Permission per role dicek di Application Layer (service), bukan hanya disembunyikan di UI.
 - Jangan pernah menambahkan `tauri-plugin-shell` atau kemampuan eksekusi command arbitrary dari input user.
 
@@ -126,3 +126,7 @@ Isu-isu berikut sudah pernah terjadi & diperbaiki selama setup Fase 1. Baca sebe
 - **`React.StrictMode` menjalankan `useEffect` dua kali di development** — ini bukan bug React, ini sengaja (untuk mendeteksi side-effect tidak aman). Kalau ada inisialisasi satu-kali (koneksi DB, migration) yang dipanggil dari `useEffect`, WAJIB pakai pola singleton berbasis **Promise yang di-cache** (bukan cuma hasil resolved-nya), dan migration SQL WAJIB idempotent. Lihat `src/database/db.ts` sebagai referensi pola yang benar.
 - **ESLint modern pakai flat config** (`eslint.config.js`), bukan `.eslintrc.cjs`/`.eslintrc.json`. Kalau menambah plugin ESLint baru, tambahkan lewat format flat config ini.
 - **`docs/` sengaja tidak masuk git** (ada di `.gitignore`) — ini keputusan sadar dari user, bukan kelalaian. Tetap pelihara isinya secara lokal untuk referensi, tapi jangan heran kalau tidak muncul di `git status`/riwayat commit.
+- **`cargo add <crate>` tanpa versi bisa mengambil release candidate yang API-nya belum stabil.** Ini terjadi pada `argon2` — versi default yang ter-install (`0.6.0`) adalah RC dengan API `SaltString`/`rand_core` yang berubah-ubah antar sub-versi & fitur default yang berbeda dari versi stabil sebelumnya, menyebabkan 3 ronde error berantai (`unresolved import`, argumen method berubah, `OsRng` tidak ketemu). **Solusi final: pin `argon2 = { version = "0.5.3", features = ["std"] }`** — versi stabil, dipakai luas, terverifikasi jalan di project ini. Pelajaran umum: untuk dependency kriptografi/keamanan, SELALU pin versi eksplisit yang sudah stabil lama, jangan biarkan cargo pilih versi terbaru begitu saja.
+- **Migration runner bisa "berhasil" tanpa error padahal diam-diam skip statement.** Pola lama `sql.split(";").filter(s => !s.startsWith("--"))` membuang SELURUH potongan kalau potongan itu diawali baris komentar — walau ada `INSERT`/`CREATE` sungguhan di baris berikutnya dalam potongan yang sama. Akibatnya `roles` sempat kosong tanpa ada pesan error sama sekali. Pola yang benar (sudah diterapkan di `migrate.ts`): buang semua baris komentar dari keseluruhan SQL dulu (`stripComments`), baru pecah jadi statement. **Kalau menulis migration baru dan curiga seed/insert tidak jalan padahal tidak ada error, cek dulu apakah ada baris komentar `--` tepat sebelum statement tsb.**
+- **Nama kolom harus dicek langsung ke file migration, jangan diasumsikan konsisten antar tabel.** `permit_status` pakai kolom `code`, tapi `roles` pakai kolom `name` untuk hal yang secara konsep sama (identifier role/status). Sebelum menulis query baru ke tabel manapun, buka `src/database/migrations/000N_*.sql` dan cek definisi kolomnya persis — jangan menebak dari pola tabel lain.
+- **Kalau mengganti isi `App.tsx` (atau file entry point lain) secara total, cek dulu baris `import "./App.css"` / `"./index.css"` tidak ikut hilang.** Ini sempat menyebabkan Tailwind CSS "hilang" padahal konfigurasinya benar — CSS-nya memang tidak pernah di-import lagi setelah file ditimpa.

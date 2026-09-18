@@ -10,6 +10,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/), dengan kategor
 - `ROADMAP.md`, `CLAUDE.md`, tutorial `06_GETTING_STARTED_TAURI.md` dan `07_FOUNDATION_WALKTHROUGH.md`
 - Fase 1 (Foundation) selesai: scaffold project Tauri v2 + React + TS, struktur folder modul, migration runner TypeScript + migration baseline `0001_init.sql` (19 tabel + index + seed roles/permit_status), setup ESLint (flat config)/typecheck/Vitest
 - `.gitignore`: `docs/` sengaja dikeluarkan dari repo (dipakai lokal saja, tidak di-push)
+- Fase 2 (Authentication) selesai: command Rust `hash_password`/`verify_password` (argon2), modul `src/modules/auth/` (types/repository/service + test), state global `authStore` (Zustand), alur "Setup Admin Pertama" (kalau tabel users kosong) → Login, `react-router-dom` terpasang
 
 ### Changed
 - (belum ada)
@@ -24,6 +25,11 @@ Beberapa isu ditemukan & diperbaiki selama setup Fase 1 — dicatat di sini supa
 - **`vitest run` exit code 1 saat belum ada test**: default Vitest menganggap "no test files" sebagai kegagalan. Ditambahkan flag `--passWithNoTests` di script `test`.
 - **File nyasar `src-tauri/2`**: file kosong tidak sengaja ke-generate (kemungkinan dari output redirect yang salah ketik di salah satu command sebelumnya), sempat ikut ter-commit. Dihapus.
 - **`.gitignore` ada baris menyatu**: `*.local` dan `src-tauri/target/` sempat ke-paste jadi satu baris (`*.localsrc-tauri/target/`), membuat pattern `*.local` tidak match apa pun. Diperbaiki jadi dua baris terpisah. (`src-tauri/target/` tetap aman karena ada `src-tauri/.gitignore` bawaan Tauri.)
+
+- **`cargo add argon2` mengambil versi RC (0.6.0) yang API-nya tidak stabil**, menyebabkan 3 ronde error compile berantai (`unresolved import SaltString/rand_core`, perubahan signature method, `OsRng` gated di belakang fitur `getrandom`). Diperbaiki dengan pin eksplisit `argon2 = { version = "0.5.3", features = ["std"] }`.
+- **Migration runner (`src/database/migrate.ts`) diam-diam skip statement SQL yang didahului baris komentar `--`**: pemisahan statement pakai `split(";")` lalu filter `!s.startsWith("--")` — kalau satu "potongan" antara dua `;` diawali baris komentar (walau ada SQL nyata di baris setelahnya dalam potongan yang sama), SELURUH potongan ikut ter-skip tanpa error. Ini menyebabkan seed `INSERT INTO roles` tidak pernah jalan (tabel `roles` kosong) padahal migration "berhasil" tanpa pesan error apa pun. Diperbaiki dengan membuang semua baris komentar dari SQL SEBELUM dipecah per statement (fungsi `stripComments`), bukan filter per-potongan setelah dipecah.
+- **`repository.ts` modul auth salah asumsi kolom**: query memakai `r.code`/`WHERE code = $1` padahal tabel `roles` di migration menyimpan nama role di kolom `name`, bukan `code` (beda dari tabel `permit_status` yang memang pakai `code`). Diperbaiki jadi `r.name as role_code` / `WHERE name = $1`.
+- **Tailwind CSS tidak ter-load setelah `App.tsx` ditimpa total di Fase 2**: baris `import "./App.css"` (atau `./index.css`, tergantung di file mana `@import "tailwindcss";` diletakkan) ikut hilang saat isi `App.tsx` diganti untuk alur setup/login, sehingga file CSS yang berisi Tailwind tidak pernah di-import lagi. Diperbaiki dengan memastikan baris import CSS tetap ada di entry point yang benar-benar dirender.
 
 ### Removed
 - File nyasar `src-tauri/2` (lihat Fixed)

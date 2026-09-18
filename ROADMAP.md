@@ -2,7 +2,7 @@
 
 Sumber: `05_IMPLEMENTATION_PLAN.md`. Dokumen ini yang dijaga up-to-date (centang checklist) seiring progres; `05_IMPLEMENTATION_PLAN.md` tetap sebagai arsip proposal awal.
 
-Status keseluruhan: **Fase 1 (Foundation) selesai — Fase 2 (Authentication) dimulai**
+Status keseluruhan: **Fase 2 (Authentication) selesai — Fase 3 (Permit Types & Custom Fields) dimulai**
 
 ## PHASE 0 — Discovery & Architecture ✅ Selesai
 - [x] Technology evaluation
@@ -26,12 +26,12 @@ Status keseluruhan: **Fase 1 (Foundation) selesai — Fase 2 (Authentication) di
 
 > `docs/ARCHITECTURE.md`, `DATABASE.md`, `ERD.md` versi lokal (tidak di-commit) menyusul opsional — tidak menghalangi Fase 2.
 
-## PHASE 2 — Authentication P0 🔄 Sedang berjalan
-- [ ] Tabel & seed user admin pertama (argon2 hash)
-- [ ] Login/logout, session, session timeout
-- [ ] Role & permission check di service layer
+## PHASE 2 — Authentication P0 ✅ Selesai
+- [x] Tabel & seed user admin pertama (argon2 hash, dibuat lewat alur "Setup Admin Pertama" di UI — bukan seed hardcode)
+- [x] Login/logout, session (in-memory Zustand, belum persistent lintas restart — ditandai untuk enhancement nanti)
+- [x] Role & permission check berbasis role langsung (ADMIN/OPERATOR/VIEWER) — tabel `permissions` granular ditunda, lihat ADR terkait
 
-## PHASE 3 — Permit Types & Custom Fields P0
+## PHASE 3 — Permit Types & Custom Fields P0 🔄 Sedang berjalan
 - [ ] CRUD jenis izin
 - [ ] CRUD custom field definition (+ options utk select/multiselect)
 
