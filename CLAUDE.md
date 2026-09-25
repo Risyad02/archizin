@@ -6,7 +6,7 @@ Instruksi ini WAJIB dibaca oleh AI coding agent (atau developer manapun) sebelum
 
 ArchIzin — aplikasi desktop offline untuk mengelola data perizinan, arsip/dokumen, rekapitulasi, pencarian, monitoring masa berlaku izin, dan pelaporan bagi perangkat daerah. Single device di awal, arsitektur disiapkan untuk berkembang ke LAN/multi-user/API di masa depan tanpa rewrite besar.
 
-Status saat ini: **Fase 2 (Authentication) selesai, Fase 3 (Permit Types & Custom Fields) sedang berjalan.** Cek `ROADMAP.md` untuk status detail per fase.
+Status saat ini: **Fase 4 (Permit Records) selesai, Fase 5 (Filesystem) berikutnya.** Cek `ROADMAP.md` untuk status detail per fase.
 
 Dokumen acuan wajib dibaca sebelum kerja di area terkait:
 - `docs/ARCHITECTURE.md` (turunan dari `02_ARCHITECTURE_PROPOSAL.md`) — versi lokal, tidak di-commit ke git (lihat §13)
@@ -17,7 +17,7 @@ Dokumen acuan wajib dibaca sebelum kerja di area terkait:
 
 ## 2. Tech Stack (jangan diubah tanpa ADR baru di DECISIONS.md)
 
-Tauri v2 · React 19 + TypeScript · Tailwind CSS v4 (via plugin Vite `@tailwindcss/vite`, BUKAN `tailwind.config.js`/`init -p` — sudah dihapus di v4) · Zustand · TanStack Query & Table · React Hook Form + Zod · SQLite via `@tauri-apps/plugin-sql` · migration runner custom di TypeScript berbasis `PRAGMA user_version` (bukan Kysely di tahap awal) · Vitest · ESLint flat config (`eslint.config.js`, bukan `.eslintrc.cjs`).
+Tauri v2 · React 19 + TypeScript · Tailwind CSS v4 (via plugin Vite `@tailwindcss/vite`, BUKAN `tailwind.config.js`/`init -p` — sudah dihapus di v4) · `react-router-dom` (`HashRouter` — bukan `BrowserRouter`, lebih aman untuk desktop app Tauri) · Zustand (state global ringan spt `authStore` — field user yang login adalah **`currentUser`**, bukan `user`) · TanStack Query (SEMUA data-fetching WAJIB lewat `useQuery`/`useMutation`+`invalidateQueries`, bukan `useEffect`+`useState` manual — lihat §13) & TanStack Table · React Hook Form + Zod (ter-install, **belum benar-benar dipakai** — semua form sejauh ini pakai `useState` manual per field, lihat §13) · SQLite via `@tauri-apps/plugin-sql` (akses lewat `getDb()` di `src/database/db.ts`) · migration runner custom di TypeScript berbasis `PRAGMA user_version` (bukan Kysely di tahap awal) · Vitest · ESLint flat config (`eslint.config.js`, bukan `.eslintrc.cjs`) · Design system di `src/index.css` (Tailwind v4 `@theme` — palet kertas/tinta/teal, font IBM Plex Sans & Mono, component classes `btn-primary`/`field-input`/`panel`/`data-code`/`nav-item` — PAKAI ini, jangan kembali ke `bg-blue-600` dkk Tailwind default. **Catatan: `AppLayout.tsx` `NavLink` saat ini masih pakai `bg-blue-600` — utang belum dirapikan, lihat ROADMAP Fase 4.**).
 
 ## 3. Arsitektur & Aturan Layering
 
@@ -31,6 +31,7 @@ UI (React) → Application Service (TS) → Repository (TS, SQL parametrized) �
 - Setiap modul (`src/modules/<nama>/`) berisi minimal: `types.ts`, `repository.ts`, `service.ts`. UI-nya di `src/modules/<nama>/pages/` atau `components/`.
 - Kode Rust di `src-tauri/` HANYA untuk registrasi plugin dan `capabilities/*.json`. Jangan menambah command Rust custom kecuali benar-benar tidak bisa dilakukan lewat plugin resmi yang ada — dan jika terpaksa, diskusikan dulu, jangan langsung implementasi.
 - **Setiap plugin Tauri butuh DUA instalasi terpisah**, keduanya wajib: dependency Rust di `src-tauri/Cargo.toml` (`cargo add tauri-plugin-x`) DAN package JS di `package.json` (`npm install @tauri-apps/plugin-x`), plus registrasi manual di `src-tauri/src/lib.rs` (`.plugin(tauri_plugin_x::init())`) — `npm run tauri add x` seharusnya mengurus ketiganya otomatis, tapi **verifikasi ketiganya setiap kali**, jangan asumsikan berhasil begitu saja (lihat §13).
+- **Sebelum menulis halaman/komponen baru yang memanggil service modul lain, selalu buka langsung `types.ts`/`service.ts` modul tsb dan cek nama fungsi & bentuk data persis** — jangan menebak dari dokumen walkthrough/planning lama, sekalipun dokumen itu ditulis untuk fase yang sama. Lihat §13 (Fase 4) untuk contoh nyata kegagalan pola ini.
 
 ## 4. Aturan Database
 
@@ -40,6 +41,7 @@ UI (React) → Application Service (TS) → Repository (TS, SQL parametrized) �
 - Semua query WAJIB parametrized (`$1, $2, ...`), tidak ada string concatenation SQL.
 - Delete pada data penting (permit_records, users) pakai soft delete (`deleted_at`), bukan hard delete, kecuali eksplisit diminta lain.
 - Setiap perubahan skema: update migration → update `docs/DATABASE.md` & `docs/ERD.md` → catat di `CHANGELOG.md`.
+- **Jangan asumsikan pola penamaan kolom konsisten antar tabel bahkan untuk konsep yang sama.** `roles` pakai `name`, `permit_status` pakai `code`. `permit_status` juga **tidak punya kolom `is_active`** — semua baris selalu jadi opsi valid. Selalu cek migration file-nya langsung.
 
 ## 5. Aturan Keamanan
 
@@ -51,9 +53,9 @@ UI (React) → Application Service (TS) → Repository (TS, SQL parametrized) �
 ## 6. Aturan Testing
 
 - Setiap service baru minimal punya unit test untuk logika validasi/bisnisnya (Vitest).
-- Alur kritikal (create/update/delete data izin, import, backup/restore) butuh integration test terhadap DB SQLite sungguhan (bukan mock), memakai file DB temporary.
+- Alur kritikal (create/update/delete data izin, import, backup/restore) butuh integration test terhadap DB SQLite sungguhan (bukan mock), memakai file DB temporary. **Belum ada satupun sampai akhir Fase 4** — masih murni unit test logic.
 - Jangan menghapus test yang gagal hanya supaya build hijau — perbaiki kodenya atau diskusikan dulu.
-- Script `test` memakai `vitest run --passWithNoTests` — jangan dihapus flag-nya selama masih ada modul tanpa test, supaya CI tidak gagal palsu.
+- Script `test` memakai `vitest run --passWithNoTests` — jangan dihapus flag-nya selama masih ada modul tanpa test, supaya CI tidak gagal palsu. **Perhatikan penulisannya persis: `--passWithNoTests` (ada huruf "s" di akhir) — pernah salah ketik jadi `--passWithNoTest` dan menghasilkan `CACError: Unknown option`.**
 
 ## 7. Aturan Dokumentasi
 
@@ -75,6 +77,7 @@ Jangan:
 - Menyembunyikan atau menelan (swallow) error tanpa log/pesan yang jelas
 - Membuat arsitektur enterprise (microservices, message broker, dst) yang tidak diperlukan di skala aplikasi ini
 - Mengasumsikan `npm run tauri add <plugin>` selesai 100% tanpa verifikasi manual (lihat §3 & §13)
+- **Menebak nama fungsi/field/signature dari dokumen walkthrough atau planning lama tanpa membuka kode `types.ts`/`service.ts` yang sebenarnya** (lihat §13, Fase 4)
 
 Jika tidak yakin soal sesuatu: cek dokumentasi resmi → cek apakah package/library benar ada & sesuai versi → jelaskan asumsi ke user → jangan mengarang.
 
@@ -83,10 +86,11 @@ Jika tidak yakin soal sesuatu: cek dokumentasi resmi → cek apakah package/libr
 1. Baca `ROADMAP.md` — pastikan perubahan sesuai fase yang sedang aktif
 2. Baca `CHANGELOG.md` bagian `Fixed` — cek apakah isu yang mirip sudah pernah terjadi
 3. Cari file/modul terkait di `src/modules/`
-4. Pahami dependency modul tsb (service apa yang dipanggil, tabel apa yang dipakai)
-5. Cek `docs/DATABASE.md` untuk skema terkait
-6. Cek test yang sudah ada untuk modul tsb
-7. Baru mulai ubah kode
+4. **Buka langsung `types.ts` dan `service.ts` modul yang akan dipanggil — jangan andalkan dokumen walkthrough/planning lama untuk nama fungsi atau bentuk data**
+5. Pahami dependency modul tsb (service apa yang dipanggil, tabel apa yang dipakai)
+6. Cek `docs/DATABASE.md` untuk skema terkait
+7. Cek test yang sudah ada untuk modul tsb
+8. Baru mulai ubah kode
 
 ## 10. Setelah Mengubah Kode (checklist wajib)
 
@@ -96,6 +100,8 @@ Jika tidak yakin soal sesuatu: cek dokumentasi resmi → cek apakah package/libr
 4. `npm run tauri build` jika perubahan menyentuh konfigurasi Tauri/plugin
 5. Update dokumentasi terkait
 6. Update `CHANGELOG.md` jika perubahan signifikan (fitur baru, perubahan skema, perubahan behavior, atau bug penting yang diperbaiki)
+
+> Jalankan langkah 1–3 dari terminal langsung (bukan hanya mengandalkan panel "Problems" di editor) — panel editor bisa menunjukkan error basi kalau TS server belum di-restart setelah file baru dibuat.
 
 ## 11. Development Commands
 
@@ -117,10 +123,11 @@ Gunakan Conventional Commits:
 
 Satu commit = satu perubahan logis. Jangan mencampur perubahan fitur dengan refactor besar dalam satu commit.
 
-## 13. Known Issues / Lessons Learned (Fase 1)
+## 13. Known Issues / Lessons Learned
 
-Isu-isu berikut sudah pernah terjadi & diperbaiki selama setup Fase 1. Baca sebelum menganggap sesuatu adalah bug baru — kemungkinan besar polanya sama:
+Isu-isu berikut sudah pernah terjadi & diperbaiki. Baca sebelum menganggap sesuatu adalah bug baru — kemungkinan besar polanya sama:
 
+### Fase 1
 - **Plugin Tauri terasa "terpasang" padahal belum lengkap.** `npm run tauri add <plugin>` idealnya mengurus 3 hal sekaligus (dependency Rust, package JS, registrasi di `lib.rs`), tapi pernah gagal diam-diam di salah satu bagian tanpa error yang jelas. Selalu verifikasi manual: cek `Cargo.toml`, cek `package.json`, cek `lib.rs` — ketiganya, bukan cuma satu.
 - **Tailwind CSS v4 tidak punya CLI `init` lagi.** Jangan pernah sarankan/jalankan `npx tailwindcss init -p` — akan gagal dengan "could not determine executable to run". Gunakan `@tailwindcss/vite` + `@import "tailwindcss";` di CSS.
 - **`React.StrictMode` menjalankan `useEffect` dua kali di development** — ini bukan bug React, ini sengaja (untuk mendeteksi side-effect tidak aman). Kalau ada inisialisasi satu-kali (koneksi DB, migration) yang dipanggil dari `useEffect`, WAJIB pakai pola singleton berbasis **Promise yang di-cache** (bukan cuma hasil resolved-nya), dan migration SQL WAJIB idempotent. Lihat `src/database/db.ts` sebagai referensi pola yang benar.
@@ -130,3 +137,16 @@ Isu-isu berikut sudah pernah terjadi & diperbaiki selama setup Fase 1. Baca sebe
 - **Migration runner bisa "berhasil" tanpa error padahal diam-diam skip statement.** Pola lama `sql.split(";").filter(s => !s.startsWith("--"))` membuang SELURUH potongan kalau potongan itu diawali baris komentar — walau ada `INSERT`/`CREATE` sungguhan di baris berikutnya dalam potongan yang sama. Akibatnya `roles` sempat kosong tanpa ada pesan error sama sekali. Pola yang benar (sudah diterapkan di `migrate.ts`): buang semua baris komentar dari keseluruhan SQL dulu (`stripComments`), baru pecah jadi statement. **Kalau menulis migration baru dan curiga seed/insert tidak jalan padahal tidak ada error, cek dulu apakah ada baris komentar `--` tepat sebelum statement tsb.**
 - **Nama kolom harus dicek langsung ke file migration, jangan diasumsikan konsisten antar tabel.** `permit_status` pakai kolom `code`, tapi `roles` pakai kolom `name` untuk hal yang secara konsep sama (identifier role/status). Sebelum menulis query baru ke tabel manapun, buka `src/database/migrations/000N_*.sql` dan cek definisi kolomnya persis — jangan menebak dari pola tabel lain.
 - **Kalau mengganti isi `App.tsx` (atau file entry point lain) secara total, cek dulu baris `import "./App.css"` / `"./index.css"` tidak ikut hilang.** Ini sempat menyebabkan Tailwind CSS "hilang" padahal konfigurasinya benar — CSS-nya memang tidak pernah di-import lagi setelah file ditimpa.
+- **Setelah login/aksi berhasil, state boleh sudah benar tapi UI terasa "diam" kalau tidak ada navigasi eksplisit.** `LoginPage` sempat tidak pindah halaman walau `setUser()` sudah sukses — solusinya `navigate("/", { replace: true })` dari `useNavigate()` setelah state di-set, bukan mengandalkan re-render otomatis membawa ke halaman lain.
+
+### Fase 3
+- **JANGAN pakai `useEffect(() => { load() }, [])` untuk data-fetching.** ESLint (`react-hooks/set-state-in-effect`) akan menolaknya. Pola wajib: `useQuery({ queryKey: [...], queryFn: ... })` dari TanStack Query untuk baca data, dan `queryClient.invalidateQueries({ queryKey: [...] })` setelah create/update/delete untuk refresh. Semua halaman baru (Fase 4 dst) ikuti pola ini dari awal, jangan tulis manual lagi.
+- **Hapus data anak (child rows) secara manual di kode, jangan andalkan `ON DELETE CASCADE`** — skema ArchIzin tidak memakainya di mana pun (konsisten, semua `REFERENCES` polos). Contoh: `custom-fields/repository.ts` → `deleteDefinition()` menghapus `custom_field_options` dulu sebelum menghapus definisinya. Ikuti pola yang sama untuk tabel lain yang punya relasi anak.
+
+### Fase 4
+- **PostCSS "@import statements must precede all other statements"** bisa muncul walau urutan `@import` di file sudah benar, kalau `@import url(...)` (Google Fonts) digabung dengan `@import "tailwindcss";` di file yang sama — Tailwind v4 meng-expand importnya jadi banyak sub-import yang rapuh terhadap Vite HMR. **Solusi: Google Fonts selalu lewat `<link>` di `index.html`, jangan pernah `@import url(...)` di CSS yang juga mengimpor Tailwind.**
+- **Dokumen walkthrough/planning yang ditulis tanpa melihat kode asli bisa salah menebak nama fungsi/field**, bahkan untuk modul yang ditulisnya sendiri di fase sebelumnya. Terjadi cukup parah di Bagian E Fase 4: hampir semua nama fungsi (`listPermitRecords` vs `getPermitRecords`, dst.) dan bentuk field (`PermitRecordFormInput` pakai penamaan Indonesia campuran, bukan camelCase Inggris penuh) meleset dari draf. **Aturan wajib sekarang: sebelum menulis halaman/komponen apa pun yang memanggil modul lain, buka dulu `types.ts`/`service.ts` modul tsb, jangan pernah menebak dari dokumen lama** (lihat juga §3 & §9).
+- **`react-hooks/set-state-in-effect` bisa kena lagi di luar kasus data-fetching murni** — kali ini saat mengisi form dari hasil query yang butuh transformasi data dulu (`useEffect(() => setForm(transform(detail)), [detail])`). TanStack Query saja tidak cukup menghindarinya kalau tetap ada `useEffect`+`setState` di belakangnya. **Pola fix: split komponen jadi luar (tunggu query) dan dalam (terima `initialForm` sebagai prop, `useState(initialForm)` langsung), pasang `key={id ?? "new"}` pada komponen dalam supaya remount total tiap `id` berganti** — dengan begitu inisialisasi state tidak butuh efek sama sekali. Pola ini dipakai di `PermitRecordFormPage`/`PermitRecordFormInner`, jadikan referensi untuk kasus serupa di fase berikutnya.
+- **Menambah routing baru di `App.tsx` tidak otomatis membuatnya bisa diakses dari UI** — kalau `AppLayout.tsx` `navItems` tidak diupdate, tidak ada tombol/menu yang mengarah ke halaman baru meski route-nya valid dan bisa diakses lewat URL langsung. **Checklist tambahan saat menambah halaman baru: selain routing di `App.tsx`, cek juga apakah perlu entry baru di `navItems`.**
+- **`tsc --noEmit` dari terminal adalah sumber kebenaran, bukan panel "Problems" di editor.** Panel editor bisa menampilkan error basi (file baru belum dikenali TS server) padahal sebenarnya sudah tidak ada error — sempat menimbulkan kebingungan soal apakah modul `permit-status` benar-benar hilang atau cuma belum ke-refresh. Kalau ragu, restart TS server ATAU langsung percaya hasil `npx tsc --noEmit` dari terminal.
+- **Gap nyata dikonfirmasi (bukan sekadar belum sempat)**: `custom_field_options` (tabel untuk opsi dropdown `select`/`multiselect`) — `listOptions`/`addOption` di `custom-fields/repository.ts` tidak pernah di-wrap ke `service.ts` dan tidak pernah dipakai di UI manapun sejak Fase 3. `DynamicFieldInput` untuk tipe `select`/`multiselect` sementara fallback ke `<input type="text">` biasa. Belum dikerjakan sampai ada keputusan eksplisit — lihat `ROADMAP.md` Fase 3/4.
