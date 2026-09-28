@@ -3,6 +3,7 @@
 Sumber: `05_IMPLEMENTATION_PLAN.md`. Dokumen ini yang dijaga up-to-date (centang checklist) seiring progres; `05_IMPLEMENTATION_PLAN.md` tetap sebagai arsip proposal awal.
 
 Status keseluruhan: **Fase 5 (Filesystem) selesai — Fase 6 (Search/Filter/Sort) berikutnya**
+Kriteria "selesai" untuk setiap checkpoint, fase, dan rilis MVP ada di `DEFINITION_OF_DONE.md`. Sebuah item hanya boleh dicentang bila kriteria di sana terpenuhi.
 
 ## PHASE 0 — Discovery & Architecture ✅ Selesai
 - [x] Technology evaluation
@@ -62,6 +63,7 @@ Status keseluruhan: **Fase 5 (Filesystem) selesai — Fase 6 (Search/Filter/Sort
 - ⚠️ Utang dari Fase 5 (detail di `CLAUDE.md` §13): path dokumen belum divalidasi (tolak `..`/karakter ilegal) sebelum dibuka lewat `open_in_default_app` padahal `CLAUDE.md` §5 mewajibkannya; tambah/hapus dokumen dan rename folder belum tercatat di audit log; `resolveTargetPath` di `folderSync.ts` return `null` tanpa log kalau storage/template belum siap; `buildFolderPath` memakai pemisah `\` (asumsi Windows-only); belum ada test untuk `folderSync.ts` dan modul `documents`
 
 ## PHASE 6 — Search/Filter/Sort P0
+- [ ] Pelunasan utang P0 (lihat register di `DEFINITION_OF_DONE.md` §5): #1 pengecekan role di service, #2 audit log untuk auth/jenis izin/custom field/dokumen/rename folder, #3 validasi path dokumen
 - [ ] Pencarian lintas field inti + custom field
 - [ ] Pagination + virtualized table
 - [ ] Pemakaian `daysUntil()`/`status_rules` untuk indikator masa berlaku (dipindah dari Fase 4)
@@ -94,9 +96,13 @@ Status keseluruhan: **Fase 5 (Filesystem) selesai — Fase 6 (Search/Filter/Sort
 - [ ] Installer Windows (.msi/.exe)
 - [ ] Dokumentasi instalasi
 
-## Kualitas Berkelanjutan (usulan, belum diadopsi resmi)
-Permintaan user: mulai fase-fase berikutnya, ArchIzin juga harus memperbaiki UI/UX dan testing secara bertahap dan tertrack — bukan cuma menambah fitur. Belum diformalkan sebagai checklist di sini; keputusan bentuk akhirnya (bagian terpisah vs. jadi item di Definition of Done tiap fase) masih menunggu.
-Progres: di akhir Fase 5 dilakukan satu putaran penyeragaman UI + responsif untuk semua halaman (lihat Fase 5). Sisi testing belum tersentuh; keputusan formalisasi masih menunggu.
+## Kualitas Berkelanjutan (diadopsi)
+Setiap fase wajib memuat kuota Q-UI, Q-TEST, dan Q-DEBT (definisi di `DEFINITION_OF_DONE.md` §2.9). Pelacakan:
+
+| Fase | Q-UI | Q-TEST | Q-DEBT |
+|---|---|---|---|
+| 5 | Penyeragaman UI + responsif semua halaman (dikerjakan sebelum kuota ini ada) | — | — |
+| 6 | | | |
 
 ---
 Update terakhir: dicatat di `CHANGELOG.md` setiap ada perubahan status fase.

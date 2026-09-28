@@ -14,6 +14,7 @@ Dokumen acuan wajib dibaca sebelum kerja di area terkait:
 - `docs/UI_UX.md` (turunan dari `04_UI_UX_PROPOSAL.md`) — versi lokal
 - `ROADMAP.md` — fase mana yang sedang aktif
 - `CHANGELOG.md` — histori perubahan **dan histori bug/fix penting** (bagian `Fixed`) — baca dulu sebelum debug sesuatu yang terasa familiar, kemungkinan sudah pernah terjadi & didokumentasikan
+- `DEFINITION_OF_DONE.md` — kriteria "selesai" per checkpoint, fase, dan rilis MVP, plus register utang teknis. WAJIB dicek sebelum menutup checkpoint atau fase.
 
 ## 2. Tech Stack (jangan diubah tanpa ADR baru di DECISIONS.md)
 
@@ -63,6 +64,7 @@ UI (React) → Application Service (TS) → Repository (TS, SQL parametrized) �
 - Setiap fase selesai: update `ROADMAP.md` (centang item selesai) + `CHANGELOG.md` (`[Unreleased]` → pindah ke versi baru saat rilis) + dokumen `docs/` terkait.
 - Keputusan arsitektur baru (pilih library baru, ubah pendekatan) dicatat sebagai ADR baru di `docs/DECISIONS.md`, bukan cuma disebut di chat.
 - Bug/isu teknis yang cukup signifikan untuk berpotensi terulang (bukan typo biasa) dicatat di `CHANGELOG.md` bagian `Fixed`, dengan root cause-nya, bukan cuma gejalanya — lihat §13 sebagai contoh format.
+- Register utang di `DEFINITION_OF_DONE.md` diperbarui di setiap penutupan fase. Utang yang lewat batas "harus lunas" tanpa dijadwalkan ulang secara tertulis menghalangi penutupan fase berikutnya.
 
 ## 8. Larangan Keras (Prohibited Practices)
 
@@ -101,6 +103,7 @@ Jika tidak yakin soal sesuatu: cek dokumentasi resmi → cek apakah package/libr
 4. `npm run tauri build` jika perubahan menyentuh konfigurasi Tauri/plugin
 5. Update dokumentasi terkait
 6. Update `CHANGELOG.md` jika perubahan signifikan (fitur baru, perubahan skema, perubahan behavior, atau bug penting yang diperbaiki)
+7. Cek `DEFINITION_OF_DONE.md` Level 1 sebelum menyatakan checkpoint selesai (dan Level 2 sebelum menutup fase). Sertakan "bukti selesai" sesuai templatnya, dan perbarui register utang bila ada utang baru atau yang lunas.
 
 > Jalankan langkah 1–3 dari terminal langsung (bukan hanya mengandalkan panel "Problems" di editor) — panel editor bisa menunjukkan error basi kalau TS server belum di-restart setelah file baru dibuat.
 
