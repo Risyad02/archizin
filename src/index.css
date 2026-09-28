@@ -38,24 +38,64 @@
   table {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Tailwind v4 mereset kursor tombol jadi panah */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
 }
 
 @layer components {
-  /* Tombol aksi utama — pengganti bg-blue-600 yang dipakai sementara di kode sebelumnya */
+  /* Dasar bersama semua tombol: tinggi seragam, cukup besar untuk disentuh */
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    transition: background-color 120ms ease, border-color 120ms ease;
+  }
+  .btn-primary:disabled,
+  .btn-secondary:disabled,
+  .btn-danger:disabled {
+    opacity: 0.5;
+  }
+
   .btn-primary {
     background-color: var(--color-accent);
     color: white;
-    border-radius: 0.375rem;
-    padding: 0.5rem 1rem;
-    font-weight: 500;
-    transition: background-color 120ms ease;
   }
-  .btn-primary:hover {
+  .btn-primary:not(:disabled):hover {
     background-color: var(--color-accent-strong);
   }
-  .btn-primary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+
+  .btn-secondary {
+    background-color: var(--color-paper-raised);
+    border-color: var(--color-line);
+    color: var(--color-ink);
+  }
+  .btn-secondary:not(:disabled):hover {
+    background-color: var(--color-accent-soft);
+    border-color: var(--color-accent);
+  }
+
+  .btn-danger {
+    background-color: var(--color-paper-raised);
+    border-color: color-mix(in srgb, var(--color-danger) 40%, white);
+    color: var(--color-danger);
+  }
+  .btn-danger:not(:disabled):hover {
+    background-color: color-mix(in srgb, var(--color-danger) 8%, white);
+    border-color: var(--color-danger);
   }
 
   .btn-text {
@@ -66,7 +106,14 @@
     color: var(--color-accent-strong);
   }
 
-  /* Input form standar */
+  .field-label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-ink-muted);
+  }
+
   .field-input {
     border: 1px solid var(--color-line);
     border-radius: 0.375rem;
@@ -77,21 +124,45 @@
   .field-input:focus {
     border-color: var(--color-accent);
   }
+  .field-input:disabled {
+    background-color: var(--color-paper);
+    color: var(--color-ink-muted);
+    cursor: not-allowed;
+  }
 
-  /* Panel/card berisi form atau tabel */
+  /* Padding responsif: rapat di layar sempit, lega di layar lebar */
   .panel {
     background-color: var(--color-paper-raised);
     border: 1px solid var(--color-line);
     border-radius: 0.5rem;
+    padding: 1rem;
+  }
+  @media (min-width: 640px) {
+    .panel {
+      padding: 1.5rem;
+    }
   }
 
-  /* Kode/nomor izin — pakai font mono, bukan sans */
+  .section-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  /* Baris item dalam daftar (mis. daftar dokumen) */
+  .item-row {
+    border: 1px solid var(--color-line);
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+  }
+
   .data-code {
     font-family: var(--font-mono);
     font-size: 0.875rem;
   }
 
-  /* Nav item aktif di sidebar */
   .nav-item {
     display: block;
     border-radius: 0.375rem;
@@ -106,5 +177,11 @@
   .nav-item-active {
     background-color: var(--color-accent);
     color: white;
+  }
+  
+  .btn-sm {
+    min-height: 2rem;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
   }
 }

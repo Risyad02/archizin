@@ -4,7 +4,7 @@ import { login } from "../service";
 import { useAuthStore } from "../../../store/authStore";
 
 export function LoginPage() {
-   const [username, setUsername] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,30 +27,48 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-lg bg-white p-6 shadow">
-        <h1 className="mb-4 text-lg font-semibold">Masuk — ArchIzin</h1>
-        <input
-          className="mb-3 w-full rounded border px-3 py-2"
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-        <input
-          className="mb-3 w-full rounded border px-3 py-2"
-          placeholder="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded bg-blue-600 py-2 text-white disabled:opacity-50"
-        >
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <form onSubmit={handleSubmit} className="panel w-full max-w-sm">
+        <h1 className="text-xl font-semibold">ArchIzin</h1>
+        <p className="mb-6 text-sm text-ink-muted">Masuk untuk melanjutkan.</p>
+
+        <div className="mb-4">
+          <label htmlFor="username" className="field-label">
+            Username
+          </label>
+          <input
+            id="username"
+            className="field-input w-full"
+            autoComplete="username"
+            autoFocus
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="mb-4">
+          <label htmlFor="password" className="field-label">
+            Password
+          </label>
+          <input
+            id="password"
+            className="field-input w-full"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+
+        {error && (
+          <p role="alert" className="mb-4 text-sm text-danger">
+            {error}
+          </p>
+        )}
+
+        <button type="submit" disabled={loading} className="btn-primary w-full">
           {loading ? "Memproses..." : "Masuk"}
         </button>
       </form>

@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getActivePermitTypes, createPermitType } from "../service";
 
 export function PermitTypesPage() {
- const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
   const { data: items = [], isLoading: loading } = useQuery({
     queryKey: ["permit-types"],
     queryFn: getActivePermitTypes,
@@ -13,8 +13,7 @@ export function PermitTypesPage() {
   const [form, setForm] = useState({ code: "", name: "", description: "" });
   const [submitting, setSubmitting] = useState(false);
 
-
-   async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
@@ -30,71 +29,133 @@ export function PermitTypesPage() {
   }
 
   return (
-    <div>
-      <h1 className="mb-4 text-xl font-semibold">Jenis Perizinan</h1>
+    <div className="space-y-6">
+      <h1 className="text-xl font-semibold">Jenis Perizinan</h1>
 
-      <form onSubmit={handleSubmit} className="mb-6 flex flex-wrap gap-2 rounded border bg-white p-4">
-        <input
-          className="rounded border px-2 py-1"
-          placeholder="Kode (mis. PBG)"
-          value={form.code}
-          onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
-          required
-        />
-        <input
-          className="flex-1 rounded border px-2 py-1"
-          placeholder="Nama jenis izin"
-          value={form.name}
-          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-          required
-        />
-        <input
-          className="flex-1 rounded border px-2 py-1"
-          placeholder="Deskripsi (opsional)"
-          value={form.description}
-          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-        />
-        <button type="submit" disabled={submitting} className="rounded bg-blue-600 px-4 py-1 text-white disabled:opacity-50">
-          Tambah
-        </button>
-      </form>
-      {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+      <section className="panel">
+        <h2 className="section-title mb-3">Tambah Jenis Izin</h2>
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[10rem_1fr_1fr_auto] lg:items-end"
+        >
+          <div>
+            <label htmlFor="permitTypeCode" className="field-label">
+              Kode <span className="text-danger">*</span>
+            </label>
+            <input
+              id="permitTypeCode"
+              className="field-input data-code w-full"
+              placeholder="mis. PBG"
+              value={form.code}
+              onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
+              required
+            />
+          </div>
 
-      {loading ? (
-        <p>Memuat...</p>
-      ) : (
-        <table className="w-full border-collapse rounded border bg-white text-sm">
-          <thead>
-            <tr className="border-b bg-slate-50 text-left">
-              <th className="px-3 py-2">Kode</th>
-              <th className="px-3 py-2">Nama</th>
-              <th className="px-3 py-2">Deskripsi</th>
-              <th className="px-3 py-2">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className="border-b last:border-0">
-                <td className="px-3 py-2 font-mono">{item.code}</td>
-                <td className="px-3 py-2">{item.name}</td>
-                <td className="px-3 py-2 text-slate-500">{item.description}</td>
-                <td className="px-3 py-2">
-                  <Link className="text-blue-600" to={`/jenis-izin/${item.id}`}>
-                    Kelola Field
-                  </Link>
-                </td>
-              </tr>
-            ))}
-            {items.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-3 py-6 text-center text-slate-400">
-                  Belum ada jenis izin. Tambahkan lewat form di atas.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      )}
+          <div>
+            <label htmlFor="permitTypeName" className="field-label">
+              Nama Jenis Izin <span className="text-danger">*</span>
+            </label>
+            <input
+              id="permitTypeName"
+              className="field-input w-full"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="permitTypeDescription" className="field-label">
+              Deskripsi
+            </label>
+            <input
+              id="permitTypeDescription"
+              className="field-input w-full"
+              placeholder="Opsional"
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </div>
+
+          <button type="submit" disabled={submitting} className="btn-primary sm:col-span-2 lg:col-span-1">
+            {submitting ? "Menambahkan..." : "Tambah"}
+          </button>
+        </form>
+
+        {error && (
+          <p role="alert" className="mt-3 text-sm text-danger">
+            {error}
+          </p>
+        )}
+      </section>
+
+      <section className="panel">
+        <h2 className="section-title mb-3">Daftar Jenis Izin</h2>
+
+        {loading ? (
+          <p className="text-sm text-ink-muted">Memuat...</p>
+        ) : items.length === 0 ? (
+          <p className="text-sm text-ink-muted">
+            Belum ada jenis izin. Tambahkan lewat form di atas.
+          </p>
+        ) : (
+          <>
+            {/* Layar lebar: tabel */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-line text-ink-muted">
+                    <th className="px-3 py-2 font-medium">Kode</th>
+                    <th className="px-3 py-2 font-medium">Nama</th>
+                    <th className="px-3 py-2 font-medium">Deskripsi</th>
+                    <th className="px-3 py-2">
+                      <span className="sr-only">Aksi</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="border-b border-line last:border-0 hover:bg-accent-soft/40"
+                    >
+                      <td className="data-code px-3 py-3">{item.code}</td>
+                      <td className="px-3 py-3">{item.name}</td>
+                      <td className="px-3 py-3 text-ink-muted">{item.description ?? "-"}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex justify-end">
+                          <Link to={`/jenis-izin/${item.id}`} className="btn-secondary btn-sm">
+                            Kelola Field
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Layar sempit: kartu per jenis izin */}
+            <ul className="space-y-3 md:hidden">
+              {items.map((item) => (
+                <li key={item.id} className="item-row">
+                  <p className="data-code">{item.code}</p>
+                  <p className="font-medium">{item.name}</p>
+                  {item.description && (
+                    <p className="text-sm text-ink-muted">{item.description}</p>
+                  )}
+                  <div className="mt-3">
+                    <Link to={`/jenis-izin/${item.id}`} className="btn-secondary btn-sm">
+                      Kelola Field
+                    </Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
     </div>
   );
 }

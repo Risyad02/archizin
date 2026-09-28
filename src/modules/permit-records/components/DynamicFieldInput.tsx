@@ -7,9 +7,10 @@ interface Props {
 }
 
 export function DynamicFieldInput({ definition, value, onChange }: Props) {
+  const id = `field-${definition.id}`;
   const commonProps = {
     className: "field-input w-full",
-    id: `field-${definition.id}`,
+    id,
   };
 
   switch (definition.field_type) {
@@ -25,7 +26,9 @@ export function DynamicFieldInput({ definition, value, onChange }: Props) {
     case "boolean":
       return (
         <input
+          id={id}
           type="checkbox"
+          className="h-5 w-5 accent-accent"
           checked={Boolean(value)}
           onChange={(e) => onChange(e.target.checked)}
         />
@@ -41,11 +44,21 @@ export function DynamicFieldInput({ definition, value, onChange }: Props) {
         />
       );
     case "integer":
+      return (
+        <input
+          {...commonProps}
+          type="number"
+          step={1}
+          value={(value as string) ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
     case "decimal":
       return (
         <input
           {...commonProps}
           type="number"
+          step="any"
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
         />
