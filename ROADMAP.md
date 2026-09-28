@@ -2,7 +2,7 @@
 
 Sumber: `05_IMPLEMENTATION_PLAN.md`. Dokumen ini yang dijaga up-to-date (centang checklist) seiring progres; `05_IMPLEMENTATION_PLAN.md` tetap sebagai arsip proposal awal.
 
-Status keseluruhan: **Fase 4 (Permit Records) selesai — Fase 5 (Filesystem) berikutnya**
+Status keseluruhan: **Fase 5 (Filesystem) selesai — Fase 6 (Search/Filter/Sort) berikutnya**
 
 ## PHASE 0 — Discovery & Architecture ✅ Selesai
 - [x] Technology evaluation
@@ -46,17 +46,27 @@ Status keseluruhan: **Fase 4 (Permit Records) selesai — Fase 5 (Filesystem) be
 - [x] Audit log terpasang untuk create/update/delete permit record (helper generik `src/lib/audit.ts`)
 - [x] Lint/typecheck/unit test bersih (18 test, 4 file) + uji manual end-to-end lolos
 - [ ] Status otomatis via status_rules (H-90/60/30/14/7) — **DITUNDA ke Fase 6/7**, bukan bagian dari penutupan Fase 4. Fungsi murni `daysUntil()` sudah ada di `src/lib/dateHelpers.ts`, tinggal dipanggil dari UI list/dashboard nanti.
-- ⚠️ Utang baru dari Fase 4 (lihat `CLAUDE.md` §13 untuk detail): dropdown `select`/`multiselect` di `DynamicFieldInput` masih fallback ke text input karena gap `custom_field_options` di atas; tidak ada transaksi DB eksplisit untuk create/update record (risiko diterima); `AppLayout` `NavLink` sempat ketinggalan link ke halaman ini (sudah diperbaiki) tapi styling-nya masih Tailwind default, belum pakai `nav-item`/palet teal.
+- ⚠️ Utang baru dari Fase 4 (lihat `CLAUDE.md` §13 untuk detail): dropdown `select`/`multiselect` di `DynamicFieldInput` masih fallback ke text input karena gap `custom_field_options` di atas; tidak ada transaksi DB eksplisit untuk create/update record (risiko diterima); `AppLayout` `NavLink` sempat ketinggalan link ke halaman ini (sudah diperbaiki; styling-nya juga sudah diseragamkan ke design system di akhir Fase 5).
 
-## PHASE 5 — Filesystem P0
-- [ ] Folder templates & pembuatan folder fisik
-- [ ] document_links + tombol "Lihat Dokumen"
-- [ ] Validasi link (local dulu; network/HTTP opsional)
+## PHASE 5 — Filesystem P0 ✅ Selesai
+- [x] Wizard "Setup Lokasi Penyimpanan" (sekali saat first-run, bukan bebas diganti lewat Pengaturan) + modul `storage-settings`; migration `0002` seed folder template default `{kode_jenis_izin}/{tahun}/{nomor_izin}_{nama_pemohon}`; boot flow `needs-admin` → `needs-storage` → `ready` (via `useQuery`)
+- [x] `src/lib/filesystem.ts`: `sanitizeForFolderName`, `resolveFolderPattern`, `copyFileWithDedup` (auto-rename `nama (2).ext`, tidak pernah overwrite), `checkFolderSync`, `renameFolder` + 17 unit test
+- [x] Folder fisik dibuat otomatis saat data izin dibuat (non-blocking: gagal buat folder tidak menggagalkan simpan data) dan `lokasi_folder` terisi; saat nomor izin/nama pemohon/tanggal terbit diedit, muncul dialog konfirmasi sebelum folder di-rename (`folderSync.ts`)
+- [x] `document_links`: daftar, tambah dokumen (pilih file → auto-copy ke folder izin), buka file, buka folder, hapus tautan (file fisik TIDAK ikut terhapus — keputusan sadar)
+- [x] 3 command Rust custom (`grant_storage_scope`, `grant_file_scope`, `open_in_default_app`) karena scope plugin `fs`/`opener` bersifat statis — lihat `CLAUDE.md` §3 dan §13
+- [x] Penyeragaman UI + responsif untuk semua halaman (design system diperluas: `btn-secondary`, `btn-danger`, `btn-sm`, `field-label`, `section-title`, `item-row`; sidebar jadi bar atas di layar sempit; tabel jadi kartu di layar sempit); font IBM Plex di-bundle lokal via `@fontsource` (aplikasi offline)
+- [x] Lint/typecheck/unit test bersih (35 test, 5 file) + uji manual end-to-end lolos
+- [ ] Validasi status `document_links` (cek file masih ada di disk, update `status`/`last_checked_at`) — **DIGESER ke Fase 6**, tidak wajib untuk penutupan Fase 5
+- [ ] Tombol "Buat Folder" manual untuk data izin yang `lokasi_folder`-nya NULL (data lama sebelum Fase 5, atau pembuatan folder yang sempat gagal) — saat ini hanya ada pesan info di halaman detail
+- [ ] Fitur "Pindah Lokasi Penyimpanan" (pindah folder fisik + update semua path di DB) — **di luar scope Fase 5** sesuai keputusan desain
+- ⚠️ Utang dari Fase 5 (detail di `CLAUDE.md` §13): path dokumen belum divalidasi (tolak `..`/karakter ilegal) sebelum dibuka lewat `open_in_default_app` padahal `CLAUDE.md` §5 mewajibkannya; tambah/hapus dokumen dan rename folder belum tercatat di audit log; `resolveTargetPath` di `folderSync.ts` return `null` tanpa log kalau storage/template belum siap; `buildFolderPath` memakai pemisah `\` (asumsi Windows-only); belum ada test untuk `folderSync.ts` dan modul `documents`
 
 ## PHASE 6 — Search/Filter/Sort P0
 - [ ] Pencarian lintas field inti + custom field
 - [ ] Pagination + virtualized table
 - [ ] Pemakaian `daysUntil()`/`status_rules` untuk indikator masa berlaku (dipindah dari Fase 4)
+- [ ] Validasi status `document_links` (digeser dari Fase 5)
+- [ ] Tombol "Buat Folder" manual untuk data izin dengan `lokasi_folder` NULL (digeser dari Fase 5)
 
 ## PHASE 7 — Dashboard P1
 - [ ] Kartu ringkasan + grafik ringan
@@ -71,13 +81,14 @@ Status keseluruhan: **Fase 4 (Permit Records) selesai — Fase 5 (Filesystem) be
 ## PHASE 10 — Audit Log P0 (paralel sejak Fase 2)
 - [ ] Pencatatan semua action penting
 - ⚠️ Terpasang untuk `permit_records` sejak Fase 4 (create/update/delete). **Masih belum diretrofit** ke `auth` (login/logout/setup admin) dan `permit-types`/`custom-fields` (CRUD jenis izin & field) — semua action di dua modul itu masih belum ter-audit sama sekali.
+- ⚠️ Tambah/hapus dokumen (`document_links`) dan rename folder fisik (Fase 5) juga belum tercatat di audit log — bagian dari retrofit yang sama.
 
 ## PHASE 11 — Backup/Restore P0
 - [ ] 3 tipe backup, restore dengan auto-backup & validasi
 
 ## PHASE 12 — Testing P0 (berjalan sepanjang fase)
 - [ ] Acceptance test MVP lengkap
-- ⚠️ Sejauh ini hanya unit test logic murni (`auth`, `permit-types`, `custom-fields`, `permit-records` — 18 test, 4 file). Belum ada integration test terhadap DB SQLite sungguhan, belum ada test komponen React sama sekali.
+- ⚠️ Sejauh ini hanya unit test logic murni (`auth`, `permit-types`, `custom-fields`, `permit-records` — 35 test, 5 file). Belum ada integration test terhadap DB SQLite sungguhan, belum ada test komponen React sama sekali. Modul Fase 5 yang belum punya test: folderSync.ts, documents
 
 ## PHASE 13 — Packaging P1
 - [ ] Installer Windows (.msi/.exe)
@@ -85,6 +96,7 @@ Status keseluruhan: **Fase 4 (Permit Records) selesai — Fase 5 (Filesystem) be
 
 ## Kualitas Berkelanjutan (usulan, belum diadopsi resmi)
 Permintaan user: mulai fase-fase berikutnya, ArchIzin juga harus memperbaiki UI/UX dan testing secara bertahap dan tertrack — bukan cuma menambah fitur. Belum diformalkan sebagai checklist di sini; keputusan bentuk akhirnya (bagian terpisah vs. jadi item di Definition of Done tiap fase) masih menunggu.
+Progres: di akhir Fase 5 dilakukan satu putaran penyeragaman UI + responsif untuk semua halaman (lihat Fase 5). Sisi testing belum tersentuh; keputusan formalisasi masih menunggu.
 
 ---
 Update terakhir: dicatat di `CHANGELOG.md` setiap ada perubahan status fase.
