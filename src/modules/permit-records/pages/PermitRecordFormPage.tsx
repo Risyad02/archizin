@@ -6,6 +6,7 @@ import {
   getPermitRecordDetail,
   createPermitRecord,
   updatePermitRecord,
+  checkPermitRecordFolderRename,
 } from "../service";
 import { getActivePermitTypes } from "../../permit-types/service";
 import { getFieldsForPermitType } from "../../custom-fields/service";
@@ -14,6 +15,8 @@ import { DynamicFieldInput } from "../components/DynamicFieldInput";
 import { useAuthStore } from "../../../store/authStore";
 import type { PermitRecordFormInput } from "../types";
 import type { PermitRecord, CustomFieldValueRow } from "../types";
+import type { FolderRenamePlan } from "../folderSync";
+import { confirm } from "@tauri-apps/plugin-dialog";
 
 const emptyForm: PermitRecordFormInput = {
   permitTypeId: 0,
@@ -152,7 +155,23 @@ function PermitRecordFormInner({
     setSaving(true);
     try {
       if (isEdit && recordId !== null) {
-        await updatePermitRecord(recordId, form, currentUser.id);
+        const renamePlan = await checkPermitRecordFolderRename(recordId, form);
+        let confirmedRename: FolderRenamePlan | null = null;
+
+        if (renamePlan) {
+          const userConfirmed = await confirm(
+            `Perubahan data membuat folder izin ini tidak lagi sesuai namanya.\n\n` +
+              `Folder lama:\n${renamePlan.oldFolderPath}\n\n` +
+              `Folder baru:\n${renamePlan.newFolderPath}\n\n` +
+              `Pindahkan folder fisik sekarang? (Jika tidak, data tetap tersimpan tapi folder tidak dipindah.)`,
+            { title: "Konfirmasi Pindah Folder", kind: "warning" }
+          );
+          if (userConfirmed) {
+            confirmedRename = renamePlan;
+          }
+        }
+
+        await updatePermitRecord(recordId, form, currentUser.id, confirmedRename);
       } else {
         await createPermitRecord(form, currentUser.id);
       }
@@ -164,164 +183,205 @@ function PermitRecordFormInner({
     }
   }
 
-  return (
-    <div className="panel">
-      <h1 className="text-xl font-semibold mb-4">
+    return (
+    <div className="panel mx-auto max-w-3xl">
+      <h1 className="mb-6 text-xl font-semibold">
         {isEdit ? "Edit Data Izin" : "Tambah Data Izin"}
       </h1>
 
-      {error && <p className="text-red-600 mb-3">{error}</p>}
+      {error && (
+        <p role="alert" className="mb-4 text-sm text-danger">
+          {error}
+        </p>
+      )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="permitTypeId">Jenis Izin</label>
-          <select
-            id="permitTypeId"
-            className="field-input w-full"
-            value={form.permitTypeId || ""}
-            onChange={(e) => updateField("permitTypeId", Number(e.target.value))}
-            disabled={isEdit}
-            required
-          >
-            <option value="">Pilih jenis izin</option>
-            {permitTypes.map((pt) => (
-              <option key={pt.id} value={pt.id}>
-                {pt.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <section>
+          <h2 className="section-title mb-3">Informasi Izin</h2>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="permitTypeId" className="field-label">
+                Jenis Izin <span className="text-danger">*</span>
+              </label>
+              <select
+                id="permitTypeId"
+                className="field-input w-full"
+                value={form.permitTypeId || ""}
+                onChange={(e) => updateField("permitTypeId", Number(e.target.value))}
+                disabled={isEdit}
+                required
+              >
+                <option value="">Pilih jenis izin</option>
+                {permitTypes.map((pt) => (
+                  <option key={pt.id} value={pt.id}>
+                    {pt.name}
+                  </option>
+                ))}
+              </select>
+              {isEdit && (
+                <p className="mt-1 text-xs text-ink-muted">
+                  Jenis izin tidak dapat diubah setelah data dibuat.
+                </p>
+              )}
+            </div>
 
-        <div>
-          <label htmlFor="nomorIzin">Nomor Izin</label>
-          <input
-            id="nomorIzin"
-            className="field-input w-full"
-            value={form.nomorIzin}
-            onChange={(e) => updateField("nomorIzin", e.target.value)}
-            required
-          />
-        </div>
+            <div>
+              <label htmlFor="nomorIzin" className="field-label">
+                Nomor Izin <span className="text-danger">*</span>
+              </label>
+              <input
+                id="nomorIzin"
+                className="field-input data-code w-full"
+                value={form.nomorIzin}
+                onChange={(e) => updateField("nomorIzin", e.target.value)}
+                required
+              />
+            </div>
 
-        <div>
-          <label htmlFor="namaPemohon">Nama Pemohon</label>
-          <input
-            id="namaPemohon"
-            className="field-input w-full"
-            value={form.namaPemohon}
-            onChange={(e) => updateField("namaPemohon", e.target.value)}
-            required
-          />
-        </div>
+            <div>
+              <label htmlFor="namaPemohon" className="field-label">
+                Nama Pemohon <span className="text-danger">*</span>
+              </label>
+              <input
+                id="namaPemohon"
+                className="field-input w-full"
+                value={form.namaPemohon}
+                onChange={(e) => updateField("namaPemohon", e.target.value)}
+                required
+              />
+            </div>
 
-        <div>
-          <label htmlFor="namaUsaha">Nama Usaha</label>
-          <input
-            id="namaUsaha"
-            className="field-input w-full"
-            value={form.namaUsaha}
-            onChange={(e) => updateField("namaUsaha", e.target.value)}
-          />
-        </div>
+            <div>
+              <label htmlFor="namaUsaha" className="field-label">
+                Nama Usaha
+              </label>
+              <input
+                id="namaUsaha"
+                className="field-input w-full"
+                value={form.namaUsaha}
+                onChange={(e) => updateField("namaUsaha", e.target.value)}
+              />
+            </div>
 
-        <div>
-          <label htmlFor="tanggalDokumen">Tanggal Dokumen</label>
-          <input
-            id="tanggalDokumen"
-            type="date"
-            className="field-input w-full"
-            value={form.tanggalDokumen ?? ""}
-            onChange={(e) => updateField("tanggalDokumen", e.target.value || null)}
-          />
-        </div>
+            <div>
+              <label htmlFor="statusId" className="field-label">
+                Status <span className="text-danger">*</span>
+              </label>
+              <select
+                id="statusId"
+                className="field-input w-full sm:w-auto sm:min-w-64"
+                value={form.statusId || ""}
+                onChange={(e) => updateField("statusId", Number(e.target.value))}
+                required
+              >
+                <option value="">Pilih status</option>
+                {statuses.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
 
-        <div>
-          <label htmlFor="tanggalTerbit">Tanggal Terbit</label>
-          <input
-            id="tanggalTerbit"
-            type="date"
-            className="field-input w-full"
-            value={form.tanggalTerbit ?? ""}
-            onChange={(e) => updateField("tanggalTerbit", e.target.value || null)}
-          />
-        </div>
+        <section>
+          <h2 className="section-title mb-3">Masa Berlaku</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="tanggalDokumen" className="field-label">
+                Tanggal Dokumen
+              </label>
+              <input
+                id="tanggalDokumen"
+                type="date"
+                className="field-input w-full"
+                value={form.tanggalDokumen ?? ""}
+                onChange={(e) => updateField("tanggalDokumen", e.target.value || null)}
+              />
+            </div>
 
-        <div>
-          <label htmlFor="tanggalMulaiBerlaku">Tanggal Mulai Berlaku</label>
-          <input
-            id="tanggalMulaiBerlaku"
-            type="date"
-            className="field-input w-full"
-            value={form.tanggalMulaiBerlaku ?? ""}
-            onChange={(e) => updateField("tanggalMulaiBerlaku", e.target.value || null)}
-          />
-        </div>
+            <div>
+              <label htmlFor="tanggalTerbit" className="field-label">
+                Tanggal Terbit
+              </label>
+              <input
+                id="tanggalTerbit"
+                type="date"
+                className="field-input w-full"
+                value={form.tanggalTerbit ?? ""}
+                onChange={(e) => updateField("tanggalTerbit", e.target.value || null)}
+              />
+            </div>
 
-        <div>
-          <label htmlFor="tanggalBerakhir">Tanggal Berakhir</label>
-          <input
-            id="tanggalBerakhir"
-            type="date"
-            className="field-input w-full"
-            value={form.tanggalBerakhir ?? ""}
-            onChange={(e) => updateField("tanggalBerakhir", e.target.value || null)}
-          />
-        </div>
+            <div>
+              <label htmlFor="tanggalMulaiBerlaku" className="field-label">
+                Tanggal Mulai Berlaku
+              </label>
+              <input
+                id="tanggalMulaiBerlaku"
+                type="date"
+                className="field-input w-full"
+                value={form.tanggalMulaiBerlaku ?? ""}
+                onChange={(e) => updateField("tanggalMulaiBerlaku", e.target.value || null)}
+              />
+            </div>
 
-        <div>
-          <label htmlFor="statusId">Status</label>
-          <select
-            id="statusId"
-            className="field-input w-full"
-            value={form.statusId || ""}
-            onChange={(e) => updateField("statusId", Number(e.target.value))}
-            required
-          >
-            <option value="">Pilih status</option>
-            {statuses.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
+            <div>
+              <label htmlFor="tanggalBerakhir" className="field-label">
+                Tanggal Berakhir
+              </label>
+              <input
+                id="tanggalBerakhir"
+                type="date"
+                className="field-input w-full"
+                value={form.tanggalBerakhir ?? ""}
+                onChange={(e) => updateField("tanggalBerakhir", e.target.value || null)}
+              />
+            </div>
+          </div>
 
-        <div>
-          <label htmlFor="keterangan">Keterangan</label>
-          <textarea
-            id="keterangan"
-            className="field-input w-full"
-            value={form.keterangan}
-            onChange={(e) => updateField("keterangan", e.target.value)}
-            rows={3}
-          />
-        </div>
+          <div className="mt-4">
+            <label htmlFor="keterangan" className="field-label">
+              Keterangan
+            </label>
+            <textarea
+              id="keterangan"
+              className="field-input w-full"
+              value={form.keterangan}
+              onChange={(e) => updateField("keterangan", e.target.value)}
+              rows={3}
+            />
+          </div>
+        </section>
 
         {fieldDefinitions.length > 0 && (
-          <fieldset className="space-y-3">
-            <legend className="font-medium">Field Tambahan</legend>
-            {fieldDefinitions.map((def) => (
-              <div key={def.id}>
-                <label htmlFor={`field-${def.id}`}>
-                  {def.label}
-                  {def.is_required ? " *" : ""}
-                </label>
-                <DynamicFieldInput
-                  definition={def}
-                  value={form.customFieldValues[def.id] ?? null}
-                  onChange={(v) => updateCustomField(def.id, v)}
-                />
-              </div>
-            ))}
-          </fieldset>
+          <section>
+            <h2 className="section-title mb-3">Field Tambahan</h2>
+            <div className="space-y-4">
+              {fieldDefinitions.map((def) => (
+                <div key={def.id}>
+                  <label htmlFor={`field-${def.id}`} className="field-label">
+                    {def.label}
+                    {def.is_required && <span className="text-danger"> *</span>}
+                  </label>
+                  <DynamicFieldInput
+                    definition={def}
+                    value={form.customFieldValues[def.id] ?? null}
+                    onChange={(v) => updateCustomField(def.id, v)}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex flex-col-reverse gap-2 border-t border-line pt-4 sm:flex-row sm:justify-end">
+          <button type="button" className="btn-secondary" onClick={() => navigate("/permit-records")}>
+            Batal
+          </button>
           <button type="submit" className="btn-primary" disabled={saving}>
             {saving ? "Menyimpan..." : "Simpan"}
-          </button>
-          <button type="button" onClick={() => navigate("/permit-records")}>
-            Batal
           </button>
         </div>
       </form>

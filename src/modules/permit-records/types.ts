@@ -2,6 +2,7 @@ export interface PermitRecord {
   id: number;
   permit_type_id: number;
   permit_type_name: string;
+  permit_type_code: string; // baru
   nomor_izin: string | null;
   nama_pemohon: string | null;
   nama_usaha: string | null;

@@ -1,36 +1,29 @@
 import { getDb } from "../../database/db";
 import type { PermitRecord, CustomFieldValueRow } from "./types";
 
+const SELECT_PERMIT_RECORD = `
+  SELECT
+    pr.id, pr.permit_type_id, pt.name as permit_type_name, pt.code as permit_type_code,
+    pr.nomor_izin, pr.nama_pemohon, pr.nama_usaha,
+    pr.tanggal_dokumen, pr.tanggal_terbit, pr.tanggal_mulai_berlaku, pr.tanggal_berakhir,
+    pr.status_id, ps.code as status_code, ps.label as status_label, ps.color as status_color,
+    pr.tahun, pr.bulan, pr.keterangan, pr.sumber_data, pr.lokasi_folder
+  FROM permit_records pr
+  JOIN permit_types pt ON pt.id = pr.permit_type_id
+  LEFT JOIN permit_status ps ON ps.id = pr.status_id
+`;
+
 export async function listPermitRecords(): Promise<PermitRecord[]> {
   const db = await getDb();
   return db.select<PermitRecord[]>(
-    `SELECT
-       pr.id, pr.permit_type_id, pt.name as permit_type_name,
-       pr.nomor_izin, pr.nama_pemohon, pr.nama_usaha,
-       pr.tanggal_dokumen, pr.tanggal_terbit, pr.tanggal_mulai_berlaku, pr.tanggal_berakhir,
-       pr.status_id, ps.code as status_code, ps.label as status_label, ps.color as status_color,
-       pr.tahun, pr.bulan, pr.keterangan, pr.sumber_data, pr.lokasi_folder
-     FROM permit_records pr
-     JOIN permit_types pt ON pt.id = pr.permit_type_id
-     LEFT JOIN permit_status ps ON ps.id = pr.status_id
-     WHERE pr.deleted_at IS NULL
-     ORDER BY pr.created_at DESC`
+    `${SELECT_PERMIT_RECORD} WHERE pr.deleted_at IS NULL ORDER BY pr.created_at DESC`
   );
 }
 
 export async function getPermitRecordById(id: number): Promise<PermitRecord | null> {
   const db = await getDb();
   const rows = await db.select<PermitRecord[]>(
-    `SELECT
-       pr.id, pr.permit_type_id, pt.name as permit_type_name,
-       pr.nomor_izin, pr.nama_pemohon, pr.nama_usaha,
-       pr.tanggal_dokumen, pr.tanggal_terbit, pr.tanggal_mulai_berlaku, pr.tanggal_berakhir,
-       pr.status_id, ps.code as status_code, ps.label as status_label, ps.color as status_color,
-       pr.tahun, pr.bulan, pr.keterangan, pr.sumber_data, pr.lokasi_folder
-     FROM permit_records pr
-     JOIN permit_types pt ON pt.id = pr.permit_type_id
-     LEFT JOIN permit_status ps ON ps.id = pr.status_id
-     WHERE pr.id = $1 AND pr.deleted_at IS NULL`,
+    `${SELECT_PERMIT_RECORD} WHERE pr.id = $1 AND pr.deleted_at IS NULL`,
     [id]
   );
   return rows[0] ?? null;
@@ -114,6 +107,12 @@ export async function updatePermitRecordCore(
   );
 }
 
+// BARU
+export async function updatePermitRecordFolder(id: number, folderPath: string): Promise<void> {
+  const db = await getDb();
+  await db.execute("UPDATE permit_records SET lokasi_folder = $1 WHERE id = $2", [folderPath, id]);
+}
+
 export async function softDeletePermitRecord(id: number): Promise<void> {
   const db = await getDb();
   await db.execute("UPDATE permit_records SET deleted_at = datetime('now') WHERE id = $1", [id]);
@@ -127,7 +126,7 @@ export async function replaceCustomFieldValues(
   await db.execute("DELETE FROM custom_field_values WHERE permit_record_id = $1", [recordId]);
 
   for (const v of values) {
-    if (v.rawValue === null || v.rawValue === "") continue; // field boleh kosong, sesuai brief
+    if (v.rawValue === null || v.rawValue === "") continue;
 
     let valueText: string | null = null;
     let valueInteger: number | null = null;
@@ -150,8 +149,6 @@ export async function replaceCustomFieldValues(
         valueBoolean = v.rawValue ? 1 : 0;
         break;
       default:
-        // text, textarea, select, url, email, phone, file_link, reference
-        // multiselect: disimpan sebagai JSON array string — keterbatasan MVP, cukup untuk fase ini
         valueText = String(v.rawValue);
     }
 

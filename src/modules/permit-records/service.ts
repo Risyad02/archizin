@@ -2,6 +2,8 @@ import * as repo from "./repository";
 import { logAudit } from "../../lib/audit";
 import { deriveTahunBulan, daysUntil } from "../../lib/dateHelpers";
 import { getFieldsForPermitType } from "../custom-fields/service";
+import { ensurePermitFolder, checkFolderRenameNeeded, applyFolderRename } from "./folderSync";
+import type { FolderRenamePlan } from "./folderSync";
 import type { PermitRecordFormInput, PermitRecord, CustomFieldValueRow } from "./types";
 
 export function validateCoreFields(input: PermitRecordFormInput): string | null {
@@ -90,6 +92,21 @@ export async function createPermitRecord(
     }))
   );
 
+  // BARU: buat folder fisik. Non-blocking secara desain (lihat catatan di awal jawaban) —
+  // getPermitRecordById dipanggil ulang di sini krn perlu permit_type_code hasil JOIN.
+  const createdRecord = await repo.getPermitRecordById(recordId);
+  if (createdRecord) {
+    const folderPath = await ensurePermitFolder({
+      permitTypeCode: createdRecord.permit_type_code,
+      nomorIzin: createdRecord.nomor_izin ?? input.nomorIzin.trim(),
+      namaPemohon: createdRecord.nama_pemohon ?? input.namaPemohon.trim(),
+      tanggalTerbit: createdRecord.tanggal_terbit,
+    });
+    if (folderPath) {
+      await repo.updatePermitRecordFolder(recordId, folderPath);
+    }
+  }
+
   await logAudit({
     userId: currentUserId,
     action: "CREATE",
@@ -102,10 +119,30 @@ export async function createPermitRecord(
   return recordId;
 }
 
+/**
+ * BARU: dipanggil UI SEBELUM submit form edit, untuk tahu apakah perlu menampilkan
+ * dialog konfirmasi rename folder. Tidak mengubah apa pun di DB/filesystem.
+ */
+export async function checkPermitRecordFolderRename(
+  id: number,
+  input: PermitRecordFormInput
+): Promise<FolderRenamePlan | null> {
+  const before = await repo.getPermitRecordById(id);
+  if (!before) return null;
+
+  return checkFolderRenameNeeded(before.lokasi_folder, {
+    permitTypeCode: before.permit_type_code,
+    nomorIzin: input.nomorIzin.trim(),
+    namaPemohon: input.namaPemohon.trim(),
+    tanggalTerbit: input.tanggalTerbit,
+  });
+}
+
 export async function updatePermitRecord(
   id: number,
   input: PermitRecordFormInput,
-  currentUserId: number
+  currentUserId: number,
+  confirmedFolderRename?: FolderRenamePlan | null // BARU
 ): Promise<void> {
   const coreError = validateCoreFields(input);
   if (coreError) throw new Error(coreError);
@@ -129,6 +166,12 @@ export async function updatePermitRecord(
     keterangan: input.keterangan.trim() || null,
     updatedBy: currentUserId,
   });
+
+  // BARU: rename folder fisik HANYA kalau user sudah konfirmasi lewat dialog UI
+  if (confirmedFolderRename) {
+    await applyFolderRename(confirmedFolderRename);
+    await repo.updatePermitRecordFolder(id, confirmedFolderRename.newFolderPath);
+  }
 
   const definitions = await getFieldsForPermitType(input.permitTypeId);
   await repo.replaceCustomFieldValues(
