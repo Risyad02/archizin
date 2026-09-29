@@ -3,16 +3,19 @@ import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
-import { openInDefaultApp } from "../../../lib/filesystem";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { getPermitRecordDetail, deletePermitRecord } from "../service";
 import {
   getDocumentsForRecord,
   addDocumentFromFile,
   removeDocumentLink,
+  openDocumentFile
 } from "../documents/service";
 import type { DocumentLink } from "../documents/types";
 import { useAuthStore } from "../../../store/authStore";
+import { can } from "../../../lib/permissions";
+import { openRecordFolder } from "../service"; 
+import { getStorageSettings } from "../../storage-settings/service";
 
 function formatCustomValue(cv: {
   field_type: string;
@@ -77,6 +80,11 @@ function PermitRecordDetailPage() {
     enabled: !Number.isNaN(recordId),
   });
 
+  const { data: storageSettings } = useQuery({
+    queryKey: ["storage-settings"],
+    queryFn: getStorageSettings,
+  });
+
   async function handleDeleteRecord() {
     if (!currentUser) return;
     const confirmed = await confirm("Hapus data izin ini?", {
@@ -84,21 +92,23 @@ function PermitRecordDetailPage() {
       kind: "warning",
     });
     if (!confirmed) return;
-    await deletePermitRecord(recordId, currentUser.id);
+    await deletePermitRecord(recordId, currentUser);
     navigate("/permit-records");
   }
 
   async function handleOpenFolder(folderPath: string) {
+    if (!currentUser || !storageSettings?.storageRoot) return;
     try {
-      await openInDefaultApp(folderPath);
+      await openRecordFolder(folderPath, storageSettings.storageRoot, currentUser);
     } catch (err) {
       setDocumentError(err instanceof Error ? err.message : "Gagal membuka folder");
     }
   }
 
-  async function handleOpenFile(filePath: string) {
+  async function handleOpenFile(doc: DocumentLink) {
+    if (!currentUser || !storageSettings?.storageRoot) return;
     try {
-      await openInDefaultApp(filePath);
+      await openDocumentFile(doc, storageSettings.storageRoot, currentUser);
     } catch (err) {
       setDocumentError(err instanceof Error ? err.message : "Gagal membuka file");
     }
@@ -111,7 +121,7 @@ function PermitRecordDetailPage() {
 
     setAddingDocument(true);
     try {
-      await addDocumentFromFile(recordId, folderPath, selected);
+      await addDocumentFromFile(recordId, folderPath, selected, currentUser!);
       await queryClient.invalidateQueries({ queryKey: ["permit-record-documents", recordId] });
     } catch (err) {
       setDocumentError(err instanceof Error ? err.message : "Gagal menambahkan dokumen");
@@ -126,7 +136,7 @@ function PermitRecordDetailPage() {
       { title: "Konfirmasi Hapus Tautan", kind: "warning" }
     );
     if (!confirmed) return;
-    await removeDocumentLink(docId);
+    await removeDocumentLink(docId, currentUser!);
     await queryClient.invalidateQueries({ queryKey: ["permit-record-documents", recordId] });
   }
 
@@ -151,12 +161,16 @@ function PermitRecordDetailPage() {
       <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-semibold">Detail Data Izin</h1>
         <div className="flex flex-wrap gap-2">
-          <Link to={`/permit-records/${record.id}/edit`} className="btn-primary">
-            Edit
-          </Link>
-          <button onClick={handleDeleteRecord} className="btn-danger">
-            Hapus
-          </button>
+          {can(currentUser?.role, "record:update") && (
+            <Link to={`/permit-records/${record.id}/edit`} className="btn-primary">
+              Edit
+            </Link>
+          )}
+          {can(currentUser?.role, "record:delete") && (
+            <button className="btn-danger" onClick={handleDeleteRecord}>
+              Hapus
+            </button>
+          )}
         </div>
       </header>
 
@@ -236,14 +250,16 @@ function PermitRecordDetailPage() {
             >
               Buka Folder
             </button>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={!hasFolder || addingDocument}
-              onClick={() => record.lokasi_folder && handleAddDocument(record.lokasi_folder)}
-            >
-              {addingDocument ? "Menambahkan..." : "Tambah Dokumen"}
-            </button>
+            {can(currentUser?.role, "document:add") && (
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={!hasFolder || addingDocument}
+                onClick={() => record.lokasi_folder && handleAddDocument(record.lokasi_folder)}
+              >
+                {addingDocument ? "Menambahkan..." : "Tambah Dokumen"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -271,12 +287,14 @@ function PermitRecordDetailPage() {
                   <p className="text-xs text-ink-muted">{documentStatusLabel(doc.status)}</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <button type="button" className="btn-secondary" onClick={() => handleOpenFile(doc.url)}>
+                  <button type="button" onClick={() => handleOpenFile(doc)}>
                     Buka File
                   </button>
-                  <button type="button" className="btn-danger" onClick={() => handleDeleteDocument(doc.id)}>
-                    Hapus Tautan
-                  </button>
+                  {can(currentUser?.role, "document:remove") && (
+                    <button type="button" className="btn-danger btn-sm" onClick={() => handleDeleteDocument(doc.id)}>
+                      Hapus Tautan
+                    </button>
+                  )}
                 </div>
               </li>
             ))}

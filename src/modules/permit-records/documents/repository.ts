@@ -30,3 +30,13 @@ export async function deleteDocumentLink(id: number): Promise<void> {
   const db = await getDb();
   await db.execute("DELETE FROM document_links WHERE id = $1", [id]);
 }
+
+export async function getDocumentLinkById(id: number): Promise<DocumentLink | null> {
+  const db = await getDb();
+  const rows = await db.select<DocumentLink[]>(
+    `SELECT id, permit_record_id, url, link_type, last_checked_at, status
+     FROM document_links WHERE id = $1`,
+    [id]
+  );
+  return rows[0] ?? null;
+}

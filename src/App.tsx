@@ -5,7 +5,7 @@ import { needsInitialSetup } from "./modules/auth/service";
 import { SetupAdminPage } from "./modules/auth/pages/SetupAdminPage";
 import { LoginPage } from "./modules/auth/pages/LoginPage";
 import { AppLayout } from "./layouts/AppLayout";
-import { ProtectedRoute, AdminRoute } from "./routes/guards";
+import { ProtectedRoute, PermissionRoute } from "./routes/guards";
 import { PermitTypesPage } from "./modules/permit-types/pages/PermitTypesPage";
 import { PermitTypeDetailPage } from "./modules/permit-types/pages/PermitTypeDetailPage";
 import { useAuthStore } from "./store/authStore";
@@ -14,6 +14,7 @@ import { PermitRecordFormPage } from "./modules/permit-records/pages/PermitRecor
 import PermitRecordDetailPage from "./modules/permit-records/pages/PermitRecordDetailPage";
 import { getStorageSettings } from "./modules/storage-settings/service"; // ganti dari needsStorageSetup
 import { grantStorageScope } from "./lib/filesystem";import { SetupStoragePage } from "./modules/storage-settings/pages/SetupStoragePage";
+import { AuditLogPage } from "./modules/audit-log/pages/AuditLogPage";
 
 type BootState = "needs-admin" | "needs-storage" | "ready";
 
@@ -64,13 +65,20 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout /> } >
             <Route path="/" element={<DashboardPlaceholder />} />
-            <Route element={<AdminRoute />}>
+            <Route element={<PermissionRoute action="audit:view" />}>
+              <Route path="/audit-log" element={<AuditLogPage />} />
+            </Route>
+            <Route element={<PermissionRoute action="permit_type:manage" />}>
               <Route path="/jenis-izin" element={<PermitTypesPage />} />
               <Route path="/jenis-izin/:id" element={<PermitTypeDetailPage />} />
             </Route>
             <Route path="/permit-records" element={<PermitRecordsPage />} />
-            <Route path="/permit-records/new" element={<PermitRecordFormPage />} />
-            <Route path="/permit-records/:id/edit" element={<PermitRecordFormPage />} />
+            <Route element={<PermissionRoute action="record:create" />}>
+              <Route path="/permit-records/new" element={<PermitRecordFormPage />} />
+            </Route>
+            <Route element={<PermissionRoute action="record:update" />}>
+              <Route path="/permit-records/:id/edit" element={<PermitRecordFormPage />} />
+            </Route>
             <Route path="/permit-records/:id" element={<PermitRecordDetailPage />} />
           </Route>
         </Route>

@@ -182,3 +182,36 @@ export async function grantFileScope(filePath: string): Promise<void> {
 export async function openInDefaultApp(path: string): Promise<void> {
   await invoke("open_in_default_app", { path });
 }
+
+function normalizeWindowsPath(path: string): string {
+  const withBackslashes = path.replace(/\//g, "\\");
+  const isUnc = /^\\\\/.test(withBackslashes);
+  const driveMatch = withBackslashes.match(/^([a-zA-Z]:)\\?/);
+  const prefix = driveMatch ? `${driveMatch[1]}\\` : isUnc ? "\\\\" : "\\";
+  const rest = driveMatch
+    ? withBackslashes.slice(driveMatch[0].length)
+    : withBackslashes.replace(/^\\+/, "");
+
+  const segments: string[] = [];
+  for (const part of rest.split("\\")) {
+    if (part === "" || part === ".") continue;
+    if (part === "..") {
+      if (segments.length > 0) segments.pop();
+      continue;
+    }
+    segments.push(part);
+  }
+  return prefix + segments.join("\\");
+}
+
+export function assertPathWithinRoot(path: string, root: string): void {
+  const normalizedPath = normalizeWindowsPath(path).toLowerCase();
+  const normalizedRoot = normalizeWindowsPath(root).toLowerCase().replace(/\\+$/, "");
+
+  const isRootItself = normalizedPath === normalizedRoot;
+  const isInsideRoot = normalizedPath.startsWith(`${normalizedRoot}\\`);
+
+  if (!isRootItself && !isInsideRoot) {
+    throw new Error("Path berada di luar folder penyimpanan arsip, akses ditolak.");
+  }
+}

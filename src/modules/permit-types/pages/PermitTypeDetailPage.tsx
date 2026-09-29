@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getFieldsForPermitType, addField, FIELD_TYPES } from "../../custom-fields/service";
+import { useAuthStore } from "../../../store/authStore";
 
 export function PermitTypeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const permitTypeId = Number(id);
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((s) => s.currentUser);
 
   const { data: fields = [], isLoading: loading } = useQuery({
     queryKey: ["custom-fields", permitTypeId],
@@ -22,7 +24,7 @@ export function PermitTypeDetailPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await addField({ permitTypeId, ...form });
+      await addField({ permitTypeId, ...form }, currentUser!);
       setForm({ fieldKey: "", label: "", fieldType: "text", isRequired: false });
       await queryClient.invalidateQueries({ queryKey: ["custom-fields", permitTypeId] });
     } catch (err) {

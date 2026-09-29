@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import * as repo from "./repository";
 import type { AuthUser } from "./types";
+import { logAudit } from "../../lib/audit";
 
 export function validateUsername(username: string): string | null {
   if (username.trim().length < 3) return "Username minimal 3 karakter";
@@ -36,6 +37,20 @@ export async function createFirstAdmin(params: {
     fullName: params.fullName,
     roleId,
   });
+
+  // Bootstrap: admin pertama mencatat aksi atas dirinya sendiri, karena belum ada
+  // aktor lain yang login saat akun ini dibuat.
+  const created = await repo.findUserByUsername(params.username);
+  if (created) {
+    await logAudit({
+      userId: created.id,
+      action: "CREATE",
+      entity: "users",
+      recordId: created.id,
+      oldValue: null,
+      newValue: { username: created.username, full_name: created.full_name, role: created.role_code },
+    });
+  }
 }
 
 export async function login(username: string, password: string): Promise<AuthUser> {
@@ -48,10 +63,30 @@ export async function login(username: string, password: string): Promise<AuthUse
   });
   if (!valid) throw new Error("Username atau password salah");
 
+  await logAudit({
+    userId: user.id,
+    action: "LOGIN",
+    entity: "auth",
+    recordId: user.id,
+    oldValue: null,
+    newValue: { username: user.username },
+  });
+
   return {
     id: user.id,
     username: user.username,
     full_name: user.full_name,
     role: user.role_code,
   };
+}
+
+export async function logout(user: AuthUser): Promise<void> {
+  await logAudit({
+    userId: user.id,
+    action: "LOGOUT",
+    entity: "auth",
+    recordId: user.id,
+    oldValue: null,
+    newValue: null,
+  });
 }

@@ -5,6 +5,9 @@ import { getFieldsForPermitType } from "../custom-fields/service";
 import { ensurePermitFolder, checkFolderRenameNeeded, applyFolderRename } from "./folderSync";
 import type { FolderRenamePlan } from "./folderSync";
 import type { PermitRecordFormInput, PermitRecord, CustomFieldValueRow } from "./types";
+import { assertCan } from "../../lib/permissions";
+import type { AuthUser } from "../auth/types";
+import { openInDefaultApp, assertPathWithinRoot } from "../../lib/filesystem";
 
 export function validateCoreFields(input: PermitRecordFormInput): string | null {
   if (!input.nomorIzin.trim()) return "Nomor izin wajib diisi";
@@ -57,8 +60,10 @@ export async function getPermitRecordDetail(
 
 export async function createPermitRecord(
   input: PermitRecordFormInput,
-  currentUserId: number
+  actor: AuthUser
 ): Promise<number> {
+  assertCan(actor.role, "record:create");
+
   const coreError = validateCoreFields(input);
   if (coreError) throw new Error(coreError);
   const customError = await validateCustomFieldValues(input.permitTypeId, input.customFieldValues);
@@ -79,7 +84,7 @@ export async function createPermitRecord(
     tahun,
     bulan,
     keterangan: input.keterangan.trim() || null,
-    createdBy: currentUserId,
+    createdBy: actor.id,
   });
 
   const definitions = await getFieldsForPermitType(input.permitTypeId);
@@ -92,8 +97,6 @@ export async function createPermitRecord(
     }))
   );
 
-  // BARU: buat folder fisik. Non-blocking secara desain (lihat catatan di awal jawaban) —
-  // getPermitRecordById dipanggil ulang di sini krn perlu permit_type_code hasil JOIN.
   const createdRecord = await repo.getPermitRecordById(recordId);
   if (createdRecord) {
     const folderPath = await ensurePermitFolder({
@@ -108,7 +111,7 @@ export async function createPermitRecord(
   }
 
   await logAudit({
-    userId: currentUserId,
+    userId: actor.id,
     action: "CREATE",
     entity: "permit_records",
     recordId,
@@ -141,9 +144,11 @@ export async function checkPermitRecordFolderRename(
 export async function updatePermitRecord(
   id: number,
   input: PermitRecordFormInput,
-  currentUserId: number,
-  confirmedFolderRename?: FolderRenamePlan | null // BARU
+  actor: AuthUser,
+  confirmedFolderRename?: FolderRenamePlan | null
 ): Promise<void> {
+  assertCan(actor.role, "record:update");
+
   const coreError = validateCoreFields(input);
   if (coreError) throw new Error(coreError);
   const customError = await validateCustomFieldValues(input.permitTypeId, input.customFieldValues);
@@ -164,13 +169,21 @@ export async function updatePermitRecord(
     tahun,
     bulan,
     keterangan: input.keterangan.trim() || null,
-    updatedBy: currentUserId,
+    updatedBy: actor.id,
   });
 
-  // BARU: rename folder fisik HANYA kalau user sudah konfirmasi lewat dialog UI
   if (confirmedFolderRename) {
     await applyFolderRename(confirmedFolderRename);
     await repo.updatePermitRecordFolder(id, confirmedFolderRename.newFolderPath);
+
+    await logAudit({
+      userId: actor.id,
+      action: "UPDATE",
+      entity: "permit_record_folder",
+      recordId: id,
+      oldValue: { lokasi_folder: confirmedFolderRename.oldFolderPath },
+      newValue: { lokasi_folder: confirmedFolderRename.newFolderPath },
+    });
   }
 
   const definitions = await getFieldsForPermitType(input.permitTypeId);
@@ -184,7 +197,7 @@ export async function updatePermitRecord(
   );
 
   await logAudit({
-    userId: currentUserId,
+    userId: actor.id,
     action: "UPDATE",
     entity: "permit_records",
     recordId: id,
@@ -193,11 +206,13 @@ export async function updatePermitRecord(
   });
 }
 
-export async function deletePermitRecord(id: number, currentUserId: number): Promise<void> {
+export async function deletePermitRecord(id: number, actor: AuthUser): Promise<void> {
+  assertCan(actor.role, "record:delete");
+
   const before = await repo.getPermitRecordById(id);
   await repo.softDeletePermitRecord(id);
   await logAudit({
-    userId: currentUserId,
+    userId: actor.id,
     action: "DELETE",
     entity: "permit_records",
     recordId: id,
@@ -205,7 +220,16 @@ export async function deletePermitRecord(id: number, currentUserId: number): Pro
     newValue: null,
   });
 }
-
 export function getExpiryWarningDays(tanggalBerakhir: string | null): number | null {
   return daysUntil(tanggalBerakhir);
+}
+
+export async function openRecordFolder(
+  folderPath: string,
+  storageRoot: string,
+  actor: AuthUser
+): Promise<void> {
+  assertCan(actor.role, "document:open");
+  assertPathWithinRoot(folderPath, storageRoot);
+  await openInDefaultApp(folderPath);
 }

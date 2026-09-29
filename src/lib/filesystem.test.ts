@@ -1,6 +1,6 @@
 // src/lib/filesystem.test.ts
 import { describe, it, expect } from "vitest";
-import { sanitizeForFolderName, resolveFolderPattern } from "./filesystem";
+import { sanitizeForFolderName, resolveFolderPattern, assertPathWithinRoot } from "./filesystem";
 
 describe("sanitizeForFolderName", () => {
   it("membiarkan nama yang sudah aman apa adanya", () => {
@@ -94,5 +94,43 @@ describe("resolveFolderPattern", () => {
   it("mendukung pattern satu segmen tanpa '/'", () => {
     const result = resolveFolderPattern("{kode_jenis_izin}_{tahun}", baseData);
     expect(result).toEqual(["SIUP_2026"]);
+  });
+});
+
+describe("assertPathWithinRoot", () => {
+  const root = "C:\\ArchizinArsip";
+
+  it("menerima path yang persis sama dengan root", () => {
+    expect(() => assertPathWithinRoot(root, root)).not.toThrow();
+  });
+
+  it("menerima subfolder di dalam root", () => {
+    expect(() =>
+      assertPathWithinRoot("C:\\ArchizinArsip\\PBG\\2026\\001_Budi\\scan.pdf", root)
+    ).not.toThrow();
+  });
+
+  it("menolak path yang keluar lewat traversal ..", () => {
+    expect(() =>
+      assertPathWithinRoot("C:\\ArchizinArsip\\PBG\\..\\..\\Windows\\System32", root)
+    ).toThrow();
+  });
+
+  it("menolak path yang sama sekali di luar root", () => {
+    expect(() => assertPathWithinRoot("C:\\Users\\budi\\Desktop\\rahasia.txt", root)).toThrow();
+  });
+
+  it("menolak folder sibling yang namanya diawali nama root (jebakan startsWith naif)", () => {
+    expect(() => assertPathWithinRoot("C:\\ArchizinArsipXtra\\file.txt", root)).toThrow();
+  });
+
+  it("perbandingan tidak case-sensitive", () => {
+    expect(() =>
+      assertPathWithinRoot("c:\\archizinarsip\\PBG\\file.pdf", root)
+    ).not.toThrow();
+  });
+
+  it("menerima campuran pemisah / dan \\\\", () => {
+    expect(() => assertPathWithinRoot("C:/ArchizinArsip/PBG/file.pdf", root)).not.toThrow();
   });
 });

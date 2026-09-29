@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getActivePermitTypes, createPermitType } from "../service";
+import { useAuthStore } from "../../../store/authStore";
 
 export function PermitTypesPage() {
   const queryClient = useQueryClient();
@@ -12,13 +13,14 @@ export function PermitTypesPage() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ code: "", name: "", description: "" });
   const [submitting, setSubmitting] = useState(false);
+  const currentUser = useAuthStore((s) => s.currentUser);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      await createPermitType(form);
+      await createPermitType(form, currentUser!);
       setForm({ code: "", name: "", description: "" });
       await queryClient.invalidateQueries({ queryKey: ["permit-types"] });
     } catch (err) {

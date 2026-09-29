@@ -171,9 +171,9 @@ function PermitRecordFormInner({
           }
         }
 
-        await updatePermitRecord(recordId, form, currentUser.id, confirmedRename);
+        await updatePermitRecord(recordId, form, currentUser, confirmedRename);
       } else {
-        await createPermitRecord(form, currentUser.id);
+        await createPermitRecord(form, currentUser);
       }
       navigate("/permit-records");
     } catch (err) {

@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { validateCoreFields } from "./service";
 import type { PermitRecordFormInput } from "./types";
+import { createPermitRecord, updatePermitRecord, deletePermitRecord } from "./service";
+import { PermissionError } from "../../lib/permissions";
+import type { AuthUser } from "../auth/types";
+
+const viewer: AuthUser = { id: 1, username: "v", full_name: "Viewer", role: "VIEWER" };
 
 function baseInput(overrides: Partial<PermitRecordFormInput> = {}): PermitRecordFormInput {
   return {
@@ -30,5 +35,17 @@ describe("validateCoreFields", () => {
     expect(
       validateCoreFields(baseInput({ tanggalTerbit: "2026-06-01", tanggalBerakhir: "2026-01-01" }))
     ).not.toBeNull();
+  });
+});
+
+describe("permit-records — permission", () => {
+  it("createPermitRecord menolak VIEWER", async () => {
+    await expect(createPermitRecord(baseInput(), viewer)).rejects.toBeInstanceOf(PermissionError);
+  });
+  it("updatePermitRecord menolak VIEWER", async () => {
+    await expect(updatePermitRecord(1, baseInput(), viewer)).rejects.toBeInstanceOf(PermissionError);
+  });
+  it("deletePermitRecord menolak VIEWER", async () => {
+    await expect(deletePermitRecord(1, viewer)).rejects.toBeInstanceOf(PermissionError);
   });
 });

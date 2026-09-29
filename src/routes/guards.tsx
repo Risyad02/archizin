@@ -1,5 +1,7 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import { can } from "../lib/permissions";
+import type { Action } from "../lib/permissions";
 
 export function ProtectedRoute() {
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -7,11 +9,17 @@ export function ProtectedRoute() {
   return <Outlet />;
 }
 
-export function AdminRoute() {
+export function PermissionRoute({ action }: { action: Action }) {
   const currentUser = useAuthStore((s) => s.currentUser);
   if (!currentUser) return <Navigate to="/login" replace />;
-  if (currentUser.role !== "ADMIN") {
-    return <div className="p-6 text-red-600">Anda tidak punya akses ke halaman ini.</div>;
+  if (!can(currentUser.role, action)) {
+    return (
+      <div className="panel">
+        <p role="alert" className="text-danger">
+          Anda tidak punya akses ke halaman ini.
+        </p>
+      </div>
+    );
   }
   return <Outlet />;
 }

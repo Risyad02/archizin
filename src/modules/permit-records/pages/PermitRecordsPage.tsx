@@ -7,6 +7,7 @@ import { getActivePermitTypes } from "../../permit-types/service";
 import { useAuthStore } from "../../../store/authStore";
 import type { PermitRecord } from "../types";
 import { confirm } from "@tauri-apps/plugin-dialog";
+import { can } from "../../../lib/permissions";
 
 type PermitTypeOption = Awaited<ReturnType<typeof getActivePermitTypes>>[number];
 
@@ -36,7 +37,7 @@ export function PermitRecordsPage() {
       kind: "warning",
     });
     if (!confirmed) return;
-    await deletePermitRecord(record.id, currentUser.id);
+    await deletePermitRecord(record.id, currentUser);
     refetch();
   }
 
@@ -44,9 +45,11 @@ export function PermitRecordsPage() {
     <div className="panel">
       <header className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-semibold">Data Perizinan</h1>
-        <Link to="/permit-records/new" className="btn-primary">
-          + Tambah Data
-        </Link>
+        {can(currentUser?.role, "record:create") && (
+          <Link to="/permit-records/new" className="btn-primary">
+            + Tambah Data
+          </Link>
+        )}
       </header>
 
       <div className="mb-4">
@@ -106,9 +109,11 @@ export function PermitRecordsPage() {
                         <Link to={`/permit-records/${r.id}`} className="btn-secondary btn-sm">
                           Detail
                         </Link>
-                        <button type="button" className="btn-danger btn-sm" onClick={() => handleDelete(r)}>
-                          Hapus
-                        </button>
+                        {can(currentUser?.role, "record:delete") && (
+                          <button type="button" className="btn-danger btn-sm" onClick={() => handleDelete(r)}>
+                            Hapus
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
