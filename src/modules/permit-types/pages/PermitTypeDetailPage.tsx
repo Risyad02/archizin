@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getFieldsForPermitType, addField, FIELD_TYPES } from "../../custom-fields/service";
 import { useAuthStore } from "../../../store/authStore";
+import { FieldOptionsManager } from "../../custom-fields/components/FieldOptionsManager";
 
 export function PermitTypeDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -127,18 +128,20 @@ export function PermitTypeDetailPage() {
         ) : (
           <ul className="space-y-2">
             {fields.map((f) => (
-              <li
-                key={f.id}
-                className="item-row flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0">
-                  <p className="font-medium">{f.label}</p>
-                  <p className="data-code truncate text-ink-muted">{f.field_key}</p>
+              <li key={f.id} className="item-row">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-medium">{f.label}</p>
+                    <p className="data-code truncate text-ink-muted">{f.field_key}</p>
+                  </div>
+                  <p className="shrink-0 text-sm text-ink-muted">
+                    {f.field_type}
+                    {f.is_required ? " · wajib" : ""}
+                  </p>
                 </div>
-                <p className="shrink-0 text-sm text-ink-muted">
-                  {f.field_type}
-                  {f.is_required ? " · wajib" : ""}
-                </p>
+                {(f.field_type === "select" || f.field_type === "multiselect") && (
+                  <FieldOptionsManager definition={f} />
+                )}
               </li>
             ))}
           </ul>

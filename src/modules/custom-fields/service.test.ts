@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateFieldKey, isValidFieldType } from "./service";
+import { validateFieldKey, isValidFieldType, deactivateFieldOption, addFieldOption } from "./service";
 import { addField } from "./service";
 import { PermissionError } from "../../lib/permissions";
 import type { AuthUser } from "../auth/types";
@@ -25,5 +25,17 @@ describe("addField — permission", () => {
         viewer
       )
     ).rejects.toBeInstanceOf(PermissionError);
+  });
+});
+
+describe("addFieldOption / deactivateFieldOption — permission", () => {
+  it("addFieldOption menolak VIEWER", async () => {
+    await expect(
+      addFieldOption({ definitionId: 1, value: "", label: "" }, viewer)
+    ).rejects.toBeInstanceOf(PermissionError);
+  });
+
+  it("deactivateFieldOption menolak VIEWER", async () => {
+    await expect(deactivateFieldOption(1, viewer)).rejects.toBeInstanceOf(PermissionError);
   });
 });

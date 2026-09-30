@@ -43,10 +43,24 @@ export async function deleteDefinition(id: number): Promise<void> {
   await db.execute("DELETE FROM custom_field_definitions WHERE id = $1", [id]);
 }
 
-export async function listOptions(definitionId: number): Promise<CustomFieldOption[]> {
+export async function listActiveOptions(definitionId: number): Promise<CustomFieldOption[]> {
   const db = await getDb();
   return db.select<CustomFieldOption[]>(
-    "SELECT id, custom_field_definition_id, value, label, sort_order FROM custom_field_options WHERE custom_field_definition_id = $1 ORDER BY sort_order",
+    `SELECT id, custom_field_definition_id, value, label, sort_order, is_active
+     FROM custom_field_options
+     WHERE custom_field_definition_id = $1 AND is_active = 1
+     ORDER BY sort_order`,
+    [definitionId]
+  );
+}
+
+export async function listAllOptions(definitionId: number): Promise<CustomFieldOption[]> {
+  const db = await getDb();
+  return db.select<CustomFieldOption[]>(
+    `SELECT id, custom_field_definition_id, value, label, sort_order, is_active
+     FROM custom_field_options
+     WHERE custom_field_definition_id = $1
+     ORDER BY sort_order`,
     [definitionId]
   );
 }
@@ -56,10 +70,25 @@ export async function addOption(params: {
   value: string;
   label: string;
   sortOrder: number;
-}): Promise<void> {
+}): Promise<number> {
   const db = await getDb();
-  await db.execute(
-    "INSERT INTO custom_field_options (custom_field_definition_id, value, label, sort_order) VALUES ($1, $2, $3, $4)",
+  const result = await db.execute(
+    "INSERT INTO custom_field_options (custom_field_definition_id, value, label, sort_order, is_active) VALUES ($1, $2, $3, $4, 1)",
     [params.definitionId, params.value, params.label, params.sortOrder]
   );
+  return result.lastInsertId as number;
+}
+
+export async function getOptionById(id: number): Promise<CustomFieldOption | null> {
+  const db = await getDb();
+  const rows = await db.select<CustomFieldOption[]>(
+    "SELECT id, custom_field_definition_id, value, label, sort_order, is_active FROM custom_field_options WHERE id = $1",
+    [id]
+  );
+  return rows[0] ?? null;
+}
+
+export async function setOptionActive(id: number, isActive: boolean): Promise<void> {
+  const db = await getDb();
+  await db.execute("UPDATE custom_field_options SET is_active = $1 WHERE id = $2", [isActive ? 1 : 0, id]);
 }

@@ -1,8 +1,9 @@
 import * as repo from "./repository";
-import type { CustomFieldDefinition, CustomFieldType } from "./types";
+import type { CustomFieldDefinition, CustomFieldOption, CustomFieldType } from "./types";
 import { assertCan } from "../../lib/permissions";
 import type { AuthUser } from "../auth/types";
 import { logAudit } from "../../lib/audit";
+
 
 const FIELD_TYPES: CustomFieldType[] = [
   "text", "textarea", "integer", "decimal", "date", "datetime",
@@ -47,7 +48,7 @@ export async function addField(
     throw new Error(`Field key "${params.fieldKey}" sudah dipakai di jenis izin ini`);
   }
 
-  await repo.createDefinition({
+  const definitionId = await repo.createDefinition({
     permitTypeId: params.permitTypeId,
     fieldKey: params.fieldKey,
     label: params.label.trim(),
@@ -56,15 +57,70 @@ export async function addField(
     sortOrder: existing.length,
   });
 
-  const after = await repo.listByPermitType(params.permitTypeId);
-  const created = after.find((f) => f.field_key === params.fieldKey);
   await logAudit({
     userId: actor.id,
     action: "CREATE",
     entity: "custom_field_definitions",
-    recordId: created?.id ?? null,
+    recordId: definitionId,
     oldValue: null,
     newValue: params,
+  });
+}
+
+export async function getOptionsForField(definitionId: number): Promise<CustomFieldOption[]> {
+  return repo.listActiveOptions(definitionId);
+}
+
+export async function getAllOptionsForField(definitionId: number): Promise<CustomFieldOption[]> {
+  return repo.listAllOptions(definitionId);
+}
+
+export async function addFieldOption(
+  params: { definitionId: number; value: string; label: string },
+  actor: AuthUser
+): Promise<void> {
+  assertCan(actor.role, "custom_field:manage");
+
+  const value = params.value.trim();
+  const label = params.label.trim();
+  if (!value) throw new Error("Nilai opsi wajib diisi");
+  if (!label) throw new Error("Label opsi wajib diisi");
+
+  const existing = await repo.listActiveOptions(params.definitionId);
+  if (existing.some((o) => o.value === value)) {
+    throw new Error(`Nilai "${value}" sudah dipakai di field ini`);
+  }
+
+  const optionId = await repo.addOption({
+    definitionId: params.definitionId,
+    value,
+    label,
+    sortOrder: existing.length,
+  });
+
+  await logAudit({
+    userId: actor.id,
+    action: "CREATE",
+    entity: "custom_field_options",
+    recordId: optionId,
+    oldValue: null,
+    newValue: { definitionId: params.definitionId, value, label },
+  });
+}
+
+export async function deactivateFieldOption(id: number, actor: AuthUser): Promise<void> {
+  assertCan(actor.role, "custom_field:manage");
+
+  const before = await repo.getOptionById(id);
+  await repo.setOptionActive(id, false);
+
+  await logAudit({
+    userId: actor.id,
+    action: "UPDATE",
+    entity: "custom_field_options",
+    recordId: id,
+    oldValue: before,
+    newValue: before ? { ...before, is_active: 0 } : null,
   });
 }
 

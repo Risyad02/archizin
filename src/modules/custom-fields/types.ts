@@ -19,4 +19,5 @@ export interface CustomFieldOption {
   value: string;
   label: string;
   sort_order: number;
+  is_active: number; 
 }

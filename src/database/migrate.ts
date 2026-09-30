@@ -1,6 +1,7 @@
 import Database from "@tauri-apps/plugin-sql";
 import m0001 from "./migrations/0001_init.sql?raw";
 import m0002 from "./migrations/0002_seed_folder_template.sql?raw";
+import m0003 from "./migrations/0003_custom_field_options_soft_delete.sql?raw";
 
 interface MigrationDef {
   version: number;
@@ -11,6 +12,7 @@ interface MigrationDef {
 const migrations: MigrationDef[] = [
   { version: 1, description: "init baseline schema", sql: m0001 },
   { version: 2, description: "seed folder template", sql: m0002 },
+  { version: 3, description: "custom_field_options soft delete", sql: m0003 },
 ];
 
 function stripComments(sql: string): string {
