@@ -14,8 +14,9 @@ import {
 import type { DocumentLink } from "../documents/types";
 import { useAuthStore } from "../../../store/authStore";
 import { can } from "../../../lib/permissions";
-import { openRecordFolder } from "../service"; 
+import { openRecordFolder, createRecordFolderManually } from "../service"; 
 import { getStorageSettings } from "../../storage-settings/service";
+import { validateAllDocumentsForRecord } from "../documents/service";
 
 function formatCustomValue(cv: {
   field_type: string;
@@ -66,8 +67,9 @@ function PermitRecordDetailPage() {
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.currentUser);
   const [addingDocument, setAddingDocument] = useState(false);
+  const [creatingFolder, setCreatingFolder] = useState(false);
   const [documentError, setDocumentError] = useState<string | null>(null);
-
+  
   const { data: detail, isLoading } = useQuery({
     queryKey: ["permit-record", recordId],
     queryFn: () => getPermitRecordDetail(recordId),
@@ -127,6 +129,30 @@ function PermitRecordDetailPage() {
       setDocumentError(err instanceof Error ? err.message : "Gagal menambahkan dokumen");
     } finally {
       setAddingDocument(false);
+    }
+  }
+    async function handleCreateFolderManually() {
+    if (!currentUser) return;
+    setDocumentError(null);
+    setCreatingFolder(true);
+    try {
+      await createRecordFolderManually(recordId, currentUser);
+      await queryClient.invalidateQueries({ queryKey: ["permit-record", recordId] });
+    } catch (err) {
+      setDocumentError(err instanceof Error ? err.message : "Gagal membuat folder");
+    } finally {
+      setCreatingFolder(false);
+    }
+  }
+
+  async function handleValidateDocuments() {
+    if (!currentUser) return;
+    setDocumentError(null);
+    try {
+      await validateAllDocumentsForRecord(recordId, currentUser);
+      await queryClient.invalidateQueries({ queryKey: ["permit-record-documents", recordId] });
+    } catch (err) {
+      setDocumentError(err instanceof Error ? err.message : "Gagal memeriksa status dokumen");
     }
   }
 
@@ -250,6 +276,11 @@ function PermitRecordDetailPage() {
             >
               Buka Folder
             </button>
+            {documents.length > 0 && can(currentUser?.role, "document:validate") && (
+              <button type="button" className="btn-secondary" onClick={handleValidateDocuments}>
+                Cek Status Dokumen
+              </button>
+            )}
             {can(currentUser?.role, "document:add") && (
               <button
                 type="button"
@@ -264,11 +295,22 @@ function PermitRecordDetailPage() {
         </div>
 
         {!hasFolder && (
-          <p className="mb-3 text-sm text-ink-muted">
-            Folder penyimpanan belum tersedia untuk data izin ini (kemungkinan pembuatan folder
-            otomatis sempat gagal). Fitur pembuatan folder manual untuk kasus ini akan ditambahkan
-            kemudian.
-          </p>
+          <div className="mb-3">
+            <p className="mb-2 text-sm text-ink-muted">
+              Folder penyimpanan belum tersedia untuk data izin ini (kemungkinan pembuatan folder
+              otomatis sempat gagal).
+            </p>
+            {can(currentUser?.role, "record:update") && (
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                disabled={creatingFolder}
+                onClick={handleCreateFolderManually}
+              >
+                {creatingFolder ? "Membuat Folder..." : "Buat Folder Sekarang"}
+              </button>
+            )}
+          </div>
         )}
 
         {documentError && <p className="mb-3 text-sm text-danger">{documentError}</p>}
@@ -284,7 +326,9 @@ function PermitRecordDetailPage() {
               >
                 <div className="min-w-0">
                   <p className="data-code truncate">{fileNameFromPath(doc.url)}</p>
-                  <p className="text-xs text-ink-muted">{documentStatusLabel(doc.status)}</p>
+                  <p className={`text-xs ${doc.status === "valid" ? "text-ink-muted" : "text-danger"}`}>
+                    {documentStatusLabel(doc.status)}
+                  </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
                   <button type="button" onClick={() => handleOpenFile(doc)}>

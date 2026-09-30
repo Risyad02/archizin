@@ -19,6 +19,7 @@ import {
   checkFolderRenameNeeded,
   applyFolderRename,
   type PermitFolderIdentity,
+  createFolderNow,
 } from "./folderSync";
 import { getStorageSettings, getActiveFolderTemplate } from "../storage-settings/service";
 import { ensureFolderExists, renameFolder } from "../../lib/filesystem";
@@ -139,5 +140,35 @@ describe("applyFolderRename", () => {
     mockRenameFolder.mockResolvedValue(undefined);
     await applyFolderRename({ oldFolderPath: "C:\\A", newFolderPath: "C:\\B" });
     expect(mockRenameFolder).toHaveBeenCalledWith("C:\\A", "C:\\B");
+  });
+});
+
+describe("createFolderNow", () => {
+  it("melempar pesan spesifik kalau storage_root belum diset (beda dari ensurePermitFolder yang diam)", async () => {
+    mockGetStorageSettings.mockResolvedValue(null);
+    await expect(createFolderNow(identity)).rejects.toThrow("Lokasi penyimpanan arsip belum diset");
+  });
+
+  it("melempar pesan spesifik kalau template belum tersedia", async () => {
+    mockGetStorageSettings.mockResolvedValue(settings);
+    mockGetActiveFolderTemplate.mockResolvedValue(null);
+    await expect(createFolderNow(identity)).rejects.toThrow("Template folder belum tersedia");
+  });
+
+  it("membuat folder dan mengembalikan path saat semua siap", async () => {
+    mockGetStorageSettings.mockResolvedValue(settings);
+    mockGetActiveFolderTemplate.mockResolvedValue(template);
+    mockEnsureFolderExists.mockResolvedValue(undefined);
+
+    const result = await createFolderNow(identity);
+    expect(result).toBe("C:\\Arsip\\PBG\\2026\\001_2026_Budi Santoso");
+  });
+
+  it("membiarkan error fs asli menyebar (tidak ditangkap seperti ensurePermitFolder)", async () => {
+    mockGetStorageSettings.mockResolvedValue(settings);
+    mockGetActiveFolderTemplate.mockResolvedValue(template);
+    mockEnsureFolderExists.mockRejectedValue(new Error("disk penuh"));
+
+    await expect(createFolderNow(identity)).rejects.toThrow("disk penuh");
   });
 });

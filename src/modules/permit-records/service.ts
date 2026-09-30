@@ -2,7 +2,7 @@ import * as repo from "./repository";
 import { logAudit } from "../../lib/audit";
 import { deriveTahunBulan, daysUntil } from "../../lib/dateHelpers";
 import { getFieldsForPermitType } from "../custom-fields/service";
-import { ensurePermitFolder, checkFolderRenameNeeded, applyFolderRename } from "./folderSync";
+import { ensurePermitFolder, checkFolderRenameNeeded, applyFolderRename, createFolderNow } from "./folderSync";
 import type { FolderRenamePlan } from "./folderSync";
 import type { PermitRecordFormInput, PermitRecord, CustomFieldValueRow } from "./types";
 import { assertCan } from "../../lib/permissions";
@@ -232,4 +232,32 @@ export async function openRecordFolder(
   assertCan(actor.role, "document:open");
   assertPathWithinRoot(folderPath, storageRoot);
   await openInDefaultApp(folderPath);
+}
+
+export async function createRecordFolderManually(id: number, actor: AuthUser): Promise<string> {
+  assertCan(actor.role, "record:update");
+
+  const record = await repo.getPermitRecordById(id);
+  if (!record) throw new Error("Data izin tidak ditemukan");
+  if (record.lokasi_folder) throw new Error("Folder untuk data izin ini sudah ada");
+
+  const folderPath = await createFolderNow({
+    permitTypeCode: record.permit_type_code,
+    nomorIzin: record.nomor_izin ?? "",
+    namaPemohon: record.nama_pemohon ?? "",
+    tanggalTerbit: record.tanggal_terbit,
+  });
+
+  await repo.updatePermitRecordFolder(id, folderPath);
+
+  await logAudit({
+    userId: actor.id,
+    action: "CREATE",
+    entity: "permit_record_folder",
+    recordId: id,
+    oldValue: null,
+    newValue: { lokasi_folder: folderPath },
+  });
+
+  return folderPath;
 }

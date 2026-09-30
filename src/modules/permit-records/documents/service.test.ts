@@ -5,6 +5,7 @@ vi.mock("./repository", () => ({
   createDocumentLink: vi.fn(),
   deleteDocumentLink: vi.fn(),
   getDocumentLinkById: vi.fn(),
+  updateDocumentLinkStatus: vi.fn(),
 }));
 
 vi.mock("../../../lib/filesystem", async (importOriginal) => {
@@ -14,6 +15,7 @@ vi.mock("../../../lib/filesystem", async (importOriginal) => {
     copyFileWithDedup: vi.fn(),
     grantFileScope: vi.fn(),
     openInDefaultApp: vi.fn(),
+    pathExists: vi.fn(),
   };
 });
 
@@ -21,10 +23,10 @@ vi.mock("../../../lib/audit", () => ({
   logAudit: vi.fn(),
 }));
 
-import { addDocumentFromFile, removeDocumentLink, openDocumentFile } from "./service";
+import { addDocumentFromFile, removeDocumentLink, openDocumentFile, validateDocumentStatus } from "./service";
 import { PermissionError } from "../../../lib/permissions";
 import * as repo from "./repository";
-import { copyFileWithDedup, grantFileScope, openInDefaultApp } from "../../../lib/filesystem";
+import { copyFileWithDedup, grantFileScope, openInDefaultApp, pathExists } from "../../../lib/filesystem";
 import { logAudit } from "../../../lib/audit";
 import type { AuthUser } from "../../auth/types";
 import type { DocumentLink } from "./types";
@@ -135,5 +137,33 @@ describe("openDocumentFile", () => {
     const outsideDoc: DocumentLink = { ...sampleDoc, url: "C:\\Windows\\System32\\cmd.exe" };
     await expect(openDocumentFile(outsideDoc, "C:\\Arsip", viewer)).rejects.toThrow("di luar folder");
     expect(mockOpenInDefaultApp).not.toHaveBeenCalled();
+  });
+});
+
+describe("validateDocumentStatus", () => {
+  it("menandai valid kalau file masih ada", async () => {
+    // pathExists tidak di-mock terpisah di sini — sudah termasuk dalam mock lib/filesystem
+    // yang sama, jadi pastikan pathExists: vi.fn() ditambahkan ke blok vi.mock("../../../lib/filesystem", ...)
+    vi.mocked(pathExists).mockResolvedValue(true);
+    const status = await validateDocumentStatus(sampleDoc, operator);
+    expect(status).toBe("valid");
+    expect(mockRepo.updateDocumentLinkStatus).toHaveBeenCalledWith(sampleDoc.id, "valid");
+  });
+
+  it("menandai not_found kalau file sudah tidak ada", async () => {
+    vi.mocked(pathExists).mockResolvedValue(false);
+    const status = await validateDocumentStatus(sampleDoc, operator);
+    expect(status).toBe("not_found");
+  });
+
+  it("tidak melakukan apa pun untuk link_type selain local", async () => {
+    const gdriveDoc: DocumentLink = { ...sampleDoc, link_type: "gdrive" };
+    const status = await validateDocumentStatus(gdriveDoc, operator);
+    expect(status).toBe(gdriveDoc.status);
+    expect(mockRepo.updateDocumentLinkStatus).not.toHaveBeenCalled();
+  });
+
+  it("menolak VIEWER", async () => {
+    await expect(validateDocumentStatus(sampleDoc, viewer)).rejects.toBeInstanceOf(PermissionError);
   });
 });

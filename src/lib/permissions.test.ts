@@ -13,6 +13,7 @@ const expected: Record<Action, Role[]> = {
   "record:delete": ["ADMIN", "OPERATOR"],
   "document:add": ["ADMIN", "OPERATOR"],
   "document:remove": ["ADMIN", "OPERATOR"],
+  "document:validate": ["ADMIN", "OPERATOR"],
   "permit_type:manage": ["ADMIN", "OPERATOR"],
   "custom_field:manage": ["ADMIN", "OPERATOR"],
   "import:run": ["ADMIN", "OPERATOR"],

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateCoreFields } from "./service";
+import { validateCoreFields, createRecordFolderManually } from "./service";
 import type { PermitRecordFormInput } from "./types";
 import { createPermitRecord, updatePermitRecord, deletePermitRecord } from "./service";
 import { PermissionError } from "../../lib/permissions";
@@ -47,5 +47,11 @@ describe("permit-records — permission", () => {
   });
   it("deletePermitRecord menolak VIEWER", async () => {
     await expect(deletePermitRecord(1, viewer)).rejects.toBeInstanceOf(PermissionError);
+  });
+});
+
+describe("createRecordFolderManually — permission", () => {
+  it("menolak VIEWER", async () => {
+    await expect(createRecordFolderManually(1, viewer)).rejects.toBeInstanceOf(PermissionError);
   });
 });

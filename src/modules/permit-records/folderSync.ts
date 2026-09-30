@@ -23,14 +23,16 @@ function resolveTahun(tanggalTerbit: string | null): number {
   return new Date().getFullYear();
 }
 
-async function resolveTargetPath(
-  identity: PermitFolderIdentity
-): Promise<string | null> {
+async function resolveTargetPathOrThrow(identity: PermitFolderIdentity): Promise<string> {
   const settings = await getStorageSettings();
-  if (!settings?.storageRoot) return null;
+  if (!settings?.storageRoot) {
+    throw new Error("Lokasi penyimpanan arsip belum diset. Selesaikan wizard Setup Lokasi Penyimpanan dulu.");
+  }
 
   const template = await getActiveFolderTemplate();
-  if (!template) return null;
+  if (!template) {
+    throw new Error("Template folder belum tersedia. Hubungi admin untuk memeriksa pengaturan folder.");
+  }
 
   const data: FolderPatternData = {
     kodeJenisIzin: identity.permitTypeCode,
@@ -41,6 +43,18 @@ async function resolveTargetPath(
 
   const segments = resolveFolderPattern(template.pattern, data);
   return buildFolderPath(settings.storageRoot, segments);
+}
+
+async function resolveTargetPath(identity: PermitFolderIdentity): Promise<string | null> {
+  try {
+    return await resolveTargetPathOrThrow(identity);
+  } catch (err) {
+    // Perbaikan U-09: dulu diam total. Sekarang minimal ada jejak di console untuk
+    // jalur otomatis (ensurePermitFolder/checkFolderRenameNeeded) yang memang sengaja
+    // non-blocking — jalur manual (createFolderNow) melempar pesan asli ke pemanggil.
+    console.warn("Folder belum bisa ditentukan:", err instanceof Error ? err.message : err);
+    return null;
+  }
 }
 
 /**
@@ -90,4 +104,10 @@ export async function checkFolderRenameNeeded(
 /** Eksekusi rename fisik SETELAH user konfirmasi lewat dialog UI. */
 export async function applyFolderRename(plan: FolderRenamePlan): Promise<void> {
   await renameFolder(plan.oldFolderPath, plan.newFolderPath);
+}
+
+export async function createFolderNow(identity: PermitFolderIdentity): Promise<string> {
+  const folderPath = await resolveTargetPathOrThrow(identity);
+  await ensureFolderExists(folderPath);
+  return folderPath;
 }

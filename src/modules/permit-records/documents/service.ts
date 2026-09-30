@@ -1,10 +1,9 @@
 import * as repo from "./repository";
-import { copyFileWithDedup, grantFileScope } from "../../../lib/filesystem";
+import { copyFileWithDedup, grantFileScope, openInDefaultApp, assertPathWithinRoot, pathExists } from "../../../lib/filesystem";
 import { assertCan } from "../../../lib/permissions";
 import type { AuthUser } from "../../auth/types";
 import type { DocumentLink } from "./types";
 import { logAudit } from "../../../lib/audit";
-import { openInDefaultApp, assertPathWithinRoot } from "../../../lib/filesystem";
 
 export async function getDocumentsForRecord(recordId: number): Promise<DocumentLink[]> {
   return repo.listDocumentLinks(recordId);
@@ -70,4 +69,35 @@ export async function openDocumentFile(
 
   assertPathWithinRoot(doc.url, storageRoot);
   await openInDefaultApp(doc.url);
+}
+
+export async function validateDocumentStatus(
+  doc: DocumentLink,
+  actor: AuthUser
+): Promise<DocumentLink["status"]> {
+  assertCan(actor.role, "document:validate");
+
+  if (doc.link_type !== "local") {
+    // Tipe lain (network/http/gdrive/sharepoint) belum ada fitur pembuatnya dan
+    // belum ada cara validasinya — lihat catatan di CLAUDE.md §13.
+    return doc.status;
+  }
+
+  const found = await pathExists(doc.url);
+  const status: DocumentLink["status"] = found ? "valid" : "not_found";
+  await repo.updateDocumentLinkStatus(doc.id, status);
+  return status;
+}
+
+export async function validateAllDocumentsForRecord(
+  recordId: number,
+  actor: AuthUser
+): Promise<DocumentLink[]> {
+  assertCan(actor.role, "document:validate");
+
+  const docs = await repo.listDocumentLinks(recordId);
+  for (const doc of docs) {
+    await validateDocumentStatus(doc, actor);
+  }
+  return repo.listDocumentLinks(recordId);
 }

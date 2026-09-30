@@ -215,3 +215,7 @@ export function assertPathWithinRoot(path: string, root: string): void {
     throw new Error("Path berada di luar folder penyimpanan arsip, akses ditolak.");
   }
 }
+
+export async function pathExists(path: string): Promise<boolean> {
+  return exists(path);
+}

@@ -40,3 +40,14 @@ export async function getDocumentLinkById(id: number): Promise<DocumentLink | nu
   );
   return rows[0] ?? null;
 }
+
+export async function updateDocumentLinkStatus(
+  id: number,
+  status: DocumentLink["status"]
+): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    "UPDATE document_links SET status = $1, last_checked_at = datetime('now') WHERE id = $2",
+    [status, id]
+  );
+}
