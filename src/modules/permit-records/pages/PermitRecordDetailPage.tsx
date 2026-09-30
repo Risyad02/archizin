@@ -17,6 +17,9 @@ import { can } from "../../../lib/permissions";
 import { openRecordFolder, createRecordFolderManually } from "../service"; 
 import { getStorageSettings } from "../../storage-settings/service";
 import { validateAllDocumentsForRecord } from "../documents/service";
+import { getActiveStatusRules } from "../../permit-status/service";
+import { computeExpiryBadge } from "../../permit-status/expiry";
+import { ExpiryIndicator } from "../../permit-status/components/ExpiryIndicator";
 
 function formatCustomValue(cv: {
   field_type: string;
@@ -85,6 +88,11 @@ function PermitRecordDetailPage() {
   const { data: storageSettings } = useQuery({
     queryKey: ["storage-settings"],
     queryFn: getStorageSettings,
+  });
+
+  const { data: statusRules = [] } = useQuery({
+    queryKey: ["status-rules"],
+    queryFn: getActiveStatusRules,
   });
 
   async function handleDeleteRecord() {
@@ -239,7 +247,10 @@ function PermitRecordDetailPage() {
           </div>
           <div>
             <dt className="font-medium">Tanggal Berakhir</dt>
-            <dd>{record.tanggal_berakhir ?? "-"}</dd>
+            <dd>
+              {record.tanggal_berakhir ?? "-"}
+              <ExpiryIndicator badge={computeExpiryBadge(record.tanggal_berakhir, statusRules)} />
+            </dd>
           </div>
           <div className="sm:col-span-2">
             <dt className="font-medium">Keterangan</dt>

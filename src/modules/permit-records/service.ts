@@ -8,6 +8,7 @@ import type { PermitRecordFormInput, PermitRecord, CustomFieldValueRow } from ".
 import { assertCan } from "../../lib/permissions";
 import type { AuthUser } from "../auth/types";
 import { openInDefaultApp, assertPathWithinRoot } from "../../lib/filesystem";
+import type { PermitRecordQuery, PermitRecordPage } from "./searchQuery";
 
 export function validateCoreFields(input: PermitRecordFormInput): string | null {
   if (!input.nomorIzin.trim()) return "Nomor izin wajib diisi";
@@ -260,4 +261,11 @@ export async function createRecordFolderManually(id: number, actor: AuthUser): P
   });
 
   return folderPath;
+}
+
+export async function getPermitRecordsPage(
+  query: PermitRecordQuery
+): Promise<PermitRecordPage<PermitRecord>> {
+  // record:read diizinkan semua role — tidak perlu assertCan, sama seperti getPermitRecords.
+  return repo.searchPermitRecords(query);
 }

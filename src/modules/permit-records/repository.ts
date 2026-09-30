@@ -1,5 +1,13 @@
 import { getDb } from "../../database/db";
 import type { PermitRecord, CustomFieldValueRow } from "./types";
+import {
+  buildPermitRecordWhere,
+  buildOrderBy,
+  clampPage,
+  clampPageSize,
+  type PermitRecordQuery,
+  type PermitRecordPage,
+} from "./searchQuery";
 
 const SELECT_PERMIT_RECORD = `
   SELECT
@@ -159,4 +167,37 @@ export async function replaceCustomFieldValues(
       [recordId, v.definitionId, valueText, valueInteger, valueDecimal, valueDate, valueBoolean]
     );
   }
+}
+
+export async function searchPermitRecords(
+  query: PermitRecordQuery
+): Promise<PermitRecordPage<PermitRecord>> {
+  const db = await getDb();
+  const { whereSql, params } = buildPermitRecordWhere(query);
+  const orderBySql = buildOrderBy(query.sortBy, query.sortDir);
+  const pageSize = clampPageSize(query.pageSize);
+  const page = clampPage(query.page);
+  const offset = (page - 1) * pageSize;
+
+  const countRows = await db.select<{ total: number }[]>(
+    `SELECT COUNT(*) as total
+     FROM permit_records pr
+     JOIN permit_types pt ON pt.id = pr.permit_type_id
+     ${whereSql}`,
+    params
+  );
+  const total = countRows[0]?.total ?? 0;
+
+  const items = await db.select<PermitRecord[]>(
+    `${SELECT_PERMIT_RECORD} ${whereSql} ${orderBySql} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    [...params, pageSize, offset]
+  );
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
 }
