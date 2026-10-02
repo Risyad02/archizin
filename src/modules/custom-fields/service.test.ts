@@ -21,7 +21,7 @@ describe("addField — permission", () => {
   it("menolak VIEWER sebelum validasi lain dijalankan", async () => {
     await expect(
       addField(
-        { permitTypeId: 1, fieldKey: "", label: "", fieldType: "text", isRequired: false },
+        { permitTypeId: 1, fieldKey: "", label: "", fieldType: "text", isRequired: false, isSearchable: false },
         viewer
       )
     ).rejects.toBeInstanceOf(PermissionError);

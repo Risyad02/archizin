@@ -18,7 +18,13 @@ export function PermitTypeDetailPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ fieldKey: "", label: "", fieldType: "text", isRequired: false });
+  const [form, setForm] = useState({
+    fieldKey: "",
+    label: "",
+    fieldType: "text",
+    isRequired: false,
+    isSearchable: false,
+  });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -26,7 +32,7 @@ export function PermitTypeDetailPage() {
     setSubmitting(true);
     try {
       await addField({ permitTypeId, ...form }, currentUser!);
-      setForm({ fieldKey: "", label: "", fieldType: "text", isRequired: false });
+      setForm({ fieldKey: "", label: "", fieldType: "text", isRequired: false, isSearchable: false });
       await queryClient.invalidateQueries({ queryKey: ["custom-fields", permitTypeId] });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menambah field");
@@ -96,15 +102,26 @@ export function PermitTypeDetailPage() {
           </div>
 
           <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between lg:col-span-3">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="h-5 w-5 accent-accent"
-                checked={form.isRequired}
-                onChange={(e) => setForm((f) => ({ ...f, isRequired: e.target.checked }))}
-              />
-              Wajib diisi
-            </label>
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 accent-accent"
+                  checked={form.isRequired}
+                  onChange={(e) => setForm((f) => ({ ...f, isRequired: e.target.checked }))}
+                />
+                Wajib diisi
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 accent-accent"
+                  checked={form.isSearchable}
+                  onChange={(e) => setForm((f) => ({ ...f, isSearchable: e.target.checked }))}
+                />
+                Bisa dicari
+              </label>
+            </div>
             <button type="submit" disabled={submitting} className="btn-primary">
               {submitting ? "Menambahkan..." : "Tambah Field"}
             </button>
@@ -134,10 +151,11 @@ export function PermitTypeDetailPage() {
                     <p className="font-medium">{f.label}</p>
                     <p className="data-code truncate text-ink-muted">{f.field_key}</p>
                   </div>
-                  <p className="shrink-0 text-sm text-ink-muted">
-                    {f.field_type}
-                    {f.is_required ? " · wajib" : ""}
-                  </p>
+                <p className="shrink-0 text-sm text-ink-muted">
+                  {f.field_type}
+                  {f.is_required ? " · wajib" : ""}
+                  {f.is_searchable ? " · bisa dicari" : ""}
+                </p>
                 </div>
                 {(f.field_type === "select" || f.field_type === "multiselect") && (
                   <FieldOptionsManager definition={f} />

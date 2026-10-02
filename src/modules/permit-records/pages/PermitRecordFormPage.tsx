@@ -363,7 +363,7 @@ function PermitRecordFormInner({
                 <div key={def.id}>
                   <label htmlFor={`field-${def.id}`} className="field-label">
                     {def.label}
-                    {def.is_required && <span className="text-danger"> *</span>}
+                    {Boolean(def.is_required) && <span className="text-danger"> *</span>}
                   </label>
                   <DynamicFieldInput
                     definition={def}

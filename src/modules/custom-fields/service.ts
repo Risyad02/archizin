@@ -33,6 +33,7 @@ export async function addField(
     label: string;
     fieldType: string;
     isRequired: boolean;
+    isSearchable: boolean;
   },
   actor: AuthUser
 ): Promise<void> {
@@ -54,6 +55,7 @@ export async function addField(
     label: params.label.trim(),
     fieldType: params.fieldType,
     isRequired: params.isRequired,
+    isSearchable: params.isSearchable,
     sortOrder: existing.length,
   });
 
@@ -122,6 +124,12 @@ export async function deactivateFieldOption(id: number, actor: AuthUser): Promis
     oldValue: before,
     newValue: before ? { ...before, is_active: 0 } : null,
   });
+}
+
+export async function getAllOptionsForDefinitions(
+  definitionIds: number[]
+): Promise<CustomFieldOption[]> {
+  return repo.listAllOptionsForDefinitions(definitionIds);
 }
 
 export { FIELD_TYPES };

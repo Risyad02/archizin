@@ -10,6 +10,7 @@ export interface CustomFieldDefinition {
   label: string;
   field_type: CustomFieldType;
   is_required: number;
+  is_searchable: number; 
   sort_order: number;
 }
 

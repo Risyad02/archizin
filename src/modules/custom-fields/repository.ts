@@ -4,7 +4,7 @@ import type { CustomFieldDefinition, CustomFieldOption } from "./types";
 export async function listByPermitType(permitTypeId: number): Promise<CustomFieldDefinition[]> {
   const db = await getDb();
   return db.select<CustomFieldDefinition[]>(
-    `SELECT id, permit_type_id, field_key, label, field_type, is_required, sort_order
+    `SELECT id, permit_type_id, field_key, label, field_type, is_required, is_searchable, sort_order
      FROM custom_field_definitions
      WHERE permit_type_id = $1
      ORDER BY sort_order, id`,
@@ -18,19 +18,21 @@ export async function createDefinition(params: {
   label: string;
   fieldType: string;
   isRequired: boolean;
+  isSearchable: boolean;
   sortOrder: number;
 }): Promise<number> {
   const db = await getDb();
   const result = await db.execute(
     `INSERT INTO custom_field_definitions
-       (permit_type_id, field_key, label, field_type, is_required, sort_order)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
+       (permit_type_id, field_key, label, field_type, is_required, is_searchable, sort_order)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
     [
       params.permitTypeId,
       params.fieldKey,
       params.label,
       params.fieldType,
       params.isRequired ? 1 : 0,
+      params.isSearchable ? 1 : 0,
       params.sortOrder,
     ]
   );
@@ -91,4 +93,19 @@ export async function getOptionById(id: number): Promise<CustomFieldOption | nul
 export async function setOptionActive(id: number, isActive: boolean): Promise<void> {
   const db = await getDb();
   await db.execute("UPDATE custom_field_options SET is_active = $1 WHERE id = $2", [isActive ? 1 : 0, id]);
+}
+
+export async function listAllOptionsForDefinitions(
+  definitionIds: number[]
+): Promise<CustomFieldOption[]> {
+  if (definitionIds.length === 0) return [];
+  const db = await getDb();
+  const placeholders = definitionIds.map((_, i) => `$${i + 1}`).join(", ");
+  return db.select<CustomFieldOption[]>(
+    `SELECT id, custom_field_definition_id, value, label, sort_order, is_active
+     FROM custom_field_options
+     WHERE custom_field_definition_id IN (${placeholders})
+     ORDER BY sort_order`,
+    definitionIds
+  );
 }
