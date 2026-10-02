@@ -2,7 +2,7 @@
 
 Sumber: `05_IMPLEMENTATION_PLAN.md`. Dokumen ini yang dijaga up-to-date (centang checklist) seiring progres; `05_IMPLEMENTATION_PLAN.md` tetap sebagai arsip proposal awal.
 
-Status keseluruhan: **Fase 5 (Filesystem) selesai — Fase 6 (Search/Filter/Sort) berikutnya**
+Status keseluruhan: **Fase 6 (Search/Filter/Sort) selesai — Fase 7 (Dashboard) berikutnya**
 Kriteria "selesai" untuk setiap checkpoint, fase, dan rilis MVP ada di `DEFINITION_OF_DONE.md`. Sebuah item hanya boleh dicentang bila kriteria di sana terpenuhi.
 
 ## PHASE 0 — Discovery & Architecture ✅ Selesai
@@ -62,13 +62,16 @@ Kriteria "selesai" untuk setiap checkpoint, fase, dan rilis MVP ada di `DEFINITI
 - [ ] Fitur "Pindah Lokasi Penyimpanan" (pindah folder fisik + update semua path di DB) — **di luar scope Fase 5** sesuai keputusan desain
 - ⚠️ Utang dari Fase 5 (detail di `CLAUDE.md` §13): path dokumen belum divalidasi (tolak `..`/karakter ilegal) sebelum dibuka lewat `open_in_default_app` padahal `CLAUDE.md` §5 mewajibkannya; tambah/hapus dokumen dan rename folder belum tercatat di audit log; `resolveTargetPath` di `folderSync.ts` return `null` tanpa log kalau storage/template belum siap; `buildFolderPath` memakai pemisah `\` (asumsi Windows-only); belum ada test untuk `folderSync.ts` dan modul `documents`
 
-## PHASE 6 — Search/Filter/Sort P0
-- [ ] Pelunasan utang P0 (lihat register di `DEFINITION_OF_DONE.md` §5): #1 pengecekan role di service, #2 audit log untuk auth/jenis izin/custom field/dokumen/rename folder, #3 validasi path dokumen
-- [ ] Pencarian lintas field inti + custom field
-- [ ] Pagination + virtualized table
-- [ ] Pemakaian `daysUntil()`/`status_rules` untuk indikator masa berlaku (dipindah dari Fase 4)
-- [ ] Validasi status `document_links` (digeser dari Fase 5)
-- [ ] Tombol "Buat Folder" manual untuk data izin dengan `lokasi_folder` NULL (digeser dari Fase 5)
+## PHASE 6 — Search/Filter/Sort P0 ✅ Selesai
+- [x] Pelunasan utang P0: `src/lib/permissions.ts` (matriks role, `assertCan`, `PermissionRoute`) dipasang di semua service mutasi (`permit-types`, `custom-fields`, `permit-records`, `documents`) lewat parameter `actor: AuthUser` (ganti `currentUserId` mentah); audit log (`logAudit`) retrofit ke `auth` (login/logout/setup admin), jenis izin, custom field, dokumen, dan rename folder, plus halaman baru **Log Aktivitas** (`audit-log/`, dijaga `audit:view`); `assertPathWithinRoot` (murni, ketat terhadap `storage_root` khusus `link_type: "local"`) dipasang di `openDocumentFile`/`openRecordFolder` baru — sekaligus memindahkan pemanggilan `open_in_default_app` dari UI ke service (perbaikan layering)
+- [x] Tombol "Buat Folder Sekarang" untuk data izin dengan `lokasi_folder` NULL (`createFolderNow` — melempar pesan error spesifik, beda dari `ensurePermitFolder` yang tetap non-blocking untuk jalur otomatis)
+- [x] Validasi status `document_links`: tombol "Cek Status Dokumen" (`pathExists`, `validateDocumentStatus`/`validateAllDocumentsForRecord`), status "File tidak ditemukan" tampil merah
+- [x] Indikator masa berlaku dari `status_rules`: migration `0004` seed H-90/60/30/14/7; `permit-status/expiry.ts` (`computeExpiryBadge`, murni) — **keputusan sadar: murni indikator visual, TIDAK menulis `status_id`**, supaya kesalahan ambang batas tidak pernah merusak data tersimpan
+- [x] Pencarian/filter/sort/pagination field inti: `searchQuery.ts` (`buildPermitRecordWhere`/`buildOrderBy`, murni) — pencarian 5 kolom (nomor izin, nama pemohon, nama usaha, jenis izin, keterangan) dengan debounce 300ms, filter (jenis izin/status/tahun/rentang tanggal berakhir) di balik tombol, sort dengan arah default berbeda per kolom, page size 10–100 (default 25) bisa dipilih user, navigasi halaman bernomor dengan ellipsis
+- [x] Perluasan pencarian ke custom field `is_searchable` (checkbox "Bisa dicari" saat menambah field baru — **belum ada fitur edit field untuk field lama**, keputusan scope sadar); sekalian diperbaiki 2 bug tampilan field dinamis yang ditemukan di sela-sela: label field opsional menampilkan "0" (`is_required` bertipe `number` bukan `boolean`), dan nilai `select`/`multiselect` tampil JSON/value mentah di halaman detail bukan label
+- [x] Evaluasi virtualisasi tabel (6.11): **disimpulkan tidak diperlukan** — paginasi sudah membatasi render maksimal `pageSize` baris via SQL `LIMIT`/`OFFSET`, bukan filter sisi client. `@tanstack/react-table` tetap ter-install tapi belum dipakai, keputusan hapus/pertahankan menunggu user
+- [x] Lint/typecheck/unit test bersih (138 test, 13 file, naik dari 35 di akhir Fase 5) + uji manual end-to-end lolos tiap checkpoint
+- ⚠️ Utang baru dari Fase 6 (detail di `CLAUDE.md` §13 dan `DEFINITION_OF_DONE.md` §5): belum ada fitur edit custom field definition (termasuk mengubah `is_searchable` field lama); `@tanstack/react-table` nganggur
 
 ## PHASE 7 — Dashboard P1
 - [ ] Kartu ringkasan + grafik ringan
@@ -80,17 +83,17 @@ Kriteria "selesai" untuk setiap checkpoint, fase, dan rilis MVP ada di `DEFINITI
 - [ ] Wizard import Excel/CSV (preview, mapping, validasi, ringkasan)
 - [ ] Export Excel/CSV/PDF mengikuti filter aktif
 
-## PHASE 10 — Audit Log P0 (paralel sejak Fase 2)
-- [ ] Pencatatan semua action penting
-- ⚠️ Terpasang untuk `permit_records` sejak Fase 4 (create/update/delete). **Masih belum diretrofit** ke `auth` (login/logout/setup admin) dan `permit-types`/`custom-fields` (CRUD jenis izin & field) — semua action di dua modul itu masih belum ter-audit sama sekali.
-- ⚠️ Tambah/hapus dokumen (`document_links`) dan rename folder fisik (Fase 5) juga belum tercatat di audit log — bagian dari retrofit yang sama.
+## PHASE 10 — Audit Log P0 (paralel sejak Fase 2) ✅ Tercapai untuk cakupan saat ini
+- [x] Pencatatan aksi penting: `permit_records` (Fase 4); `auth`, `permit-types`, `custom-fields`, `documents`, rename folder (Fase 6)
+- [x] Halaman **Log Aktivitas** untuk melihatnya (dijaga `audit:view`, ADMIN/OPERATOR)
+- ⚠️ Belum mencakup `import` dan `restore` karena fiturnya sendiri belum ada (Fase 9/11) — pola `actor`+`logAudit` sudah mapan, tinggal dipasang saat fase itu dikerjakan
 
 ## PHASE 11 — Backup/Restore P0
 - [ ] 3 tipe backup, restore dengan auto-backup & validasi
 
 ## PHASE 12 — Testing P0 (berjalan sepanjang fase)
 - [ ] Acceptance test MVP lengkap
-- ⚠️ Sejauh ini hanya unit test logic murni (`auth`, `permit-types`, `custom-fields`, `permit-records` — 35 test, 5 file). Belum ada integration test terhadap DB SQLite sungguhan, belum ada test komponen React sama sekali. Modul Fase 5 yang belum punya test: folderSync.ts, documents
+- ⚠️ 138 unit test (13 file) — mencakup semua modul inti plus `permissions`, `searchQuery`, `pagination`, `expiry`. Test mock-based pertama muncul di Fase 6 Checkpoint 6.4 (`folderSync`, `documents`, `storage-settings`). Masih belum ada integration test terhadap DB SQLite sungguhan, dan belum ada test komponen React sama sekali — lihat `DEFINITION_OF_DONE.md` bagian Piramida Test untuk rencananya.
 
 ## PHASE 13 — Packaging P1
 - [ ] Installer Windows (.msi/.exe)
@@ -102,7 +105,8 @@ Setiap fase wajib memuat kuota Q-UI, Q-TEST, dan Q-DEBT (definisi di `DEFINITION
 | Fase | Q-UI | Q-TEST | Q-DEBT |
 |---|---|---|---|
 | 5 | Penyeragaman UI + responsif semua halaman (dikerjakan sebelum kuota ini ada) | — | — |
-| 6 | | | |
+| 6 | Perbaikan tampilan field dinamis (label "0" hilang, select/multiselect tampil label asli, bukan JSON mentah) | Test mock-based pertama di codebase (`folderSync`/`documents`/`storage-settings`, Checkpoint 6.4) + `searchQuery.ts`/`pagination.ts` murni dengan test penuh | U-05, U-06, U-09, U-15, dan U-01 lanjutan (searchable) lunas; #1/#2/#3 (role, audit, path) lunas |
+| 7 | | | |
 
 ---
 Update terakhir: dicatat di `CHANGELOG.md` setiap ada perubahan status fase.

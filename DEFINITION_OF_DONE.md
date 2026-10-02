@@ -235,23 +235,22 @@ Kondisi per akhir Fase 5, dibandingkan dengan dokumen ini. Prioritas: **P0** mem
 
 | # | Celah | Sejak | Harus lunas | Prioritas |
 |---|---|---|---|---|
-| 1 | Pengecekan role belum terlihat di service `permit-records` (create/update/delete tidak memeriksa role pemanggil); hanya rute admin yang dijaga di UI. Perlu dicek juga service lain | Fase 2 | Awal Fase 6 (sebelum data nyata dimasukkan) | P0 |
-| 2 | Audit log belum ada untuk auth, jenis izin, custom field, tambah/hapus dokumen, rename folder | Fase 2 | Awal Fase 6 | P0 |
-| 3 | Path dokumen belum divalidasi sebelum `open_in_default_app` (melanggar `CLAUDE.md` §5) | Fase 5 | Fase 6 | P0 |
-| 4 | Tidak ada system log; kegagalan non-blocking hanya `console.error`, tidak terlihat oleh pengguna | Fase 5 | Sebelum Fase 11 | P0 |
-| 5 | Restore, backup, dan migrasi DB belum ada; migration berjalan otomatis tanpa backup sebelumnya | Fase 1 | Fase 11 (aturan backup-sebelum-migrate berlaku sejak sekarang untuk migration baru berisi perubahan destruktif) | P0 |
-| 6 | Test integrasi ke SQLite sungguhan belum ada; belum diputuskan cara menyuntik adapter DB | Fase 1 | Keputusan di awal Fase 6, test sebelum Fase 9 | P1 |
+| ~~1~~ | ~~Pengecekan role belum terlihat di service~~ — **LUNAS Fase 6**, lihat `CLAUDE.md` §3 pola `actor: AuthUser` | Fase 2 | Fase 6 | Lunas |
+| ~~2~~ | ~~Audit log belum ada untuk auth/jenis izin/custom field/dokumen/rename folder~~ — **LUNAS Fase 6** | Fase 2 | Fase 6 | Lunas |
+| ~~3~~ | ~~Path dokumen belum divalidasi~~ — **LUNAS Fase 6** (`assertPathWithinRoot`, khusus `link_type: "local"`) | Fase 5 | Fase 6 | Lunas |
 | 7 | Tidak ada test komponen React | Fase 1 | Dimulai Fase 6 untuk form dan alur kritikal | P1 |
-| 8 | Test untuk `folderSync.ts`, modul `documents`, dan `storage-settings` belum ada | Fase 5 | Fase 6 | P1 |
-| 9 | `custom_field_options` tanpa service dan UI; `select`/`multiselect` jatuh ke text input | Fase 3 | Sebelum rilis MVP; sebaiknya Fase 6 | P1 |
-| 10 | Tombol "Buat Folder" manual untuk data izin dengan `lokasi_folder` NULL; validasi status `document_links` | Fase 5 | Fase 6 | P1 |
-| 11 | `resolveTargetPath` di `folderSync.ts` mengembalikan `null` tanpa log saat storage/template belum siap | Fase 5 | Bersama system log (#4) | P1 |
+| ~~8~~ | ~~Test untuk folderSync.ts/documents/storage-settings belum ada~~ — **LUNAS Fase 6** (Checkpoint 6.4) | Fase 5 | Fase 6 | Lunas |
+| ~~9~~ | ~~custom_field_options tanpa service/UI~~ — **LUNAS Fase 6** (Checkpoint 6.5, plus revisi soft delete) | Fase 3 | Fase 6 | Lunas |
+| ~~10~~ | ~~Tombol Buat Folder manual; validasi status document_links~~ — **LUNAS Fase 6** (Checkpoint 6.6) | Fase 5 | Fase 6 | Lunas |
+| ~~11~~ | ~~resolveTargetPath return null tanpa log~~ — **LUNAS Fase 6** (bonus Checkpoint 6.6, console.warn ditambah) | Fase 5 | Bersama #4 | Lunas |
 | 12 | Tidak ada transaksi DB eksplisit pada create/update data izin (insert inti lalu nilai custom field) | Fase 4 | Sebelum Fase 9 (import massal memperbesar risikonya) | P1 |
 | 13 | Session hanya in-memory; belum diputuskan apakah cukup | Fase 2 | Sebelum rilis MVP (keputusan) | P2 |
 | 14 | `react-hook-form` dan `zod` terpasang tetapi tidak dipakai; validasi form manual per halaman | Fase 4 | Diputuskan: pakai atau hapus dari dependensi | P2 |
 | 15 | `buildFolderPath` memakai pemisah `\` (Windows-only) | Fase 5 | Bila keputusan cross-platform muncul | P2 |
 | 16 | Fitur "Pindah Lokasi Penyimpanan" belum ada (di luar scope Fase 5 sesuai keputusan) | Fase 5 | Sebelum rilis MVP bila pengguna butuh pindah disk; keputusan | P2 |
-| 17 | Status otomatis `status_rules` (H-90/60/30/14/7) belum dipakai di UI | Fase 4 | Fase 6/7 | P1 |
+| ~~17~~ | ~~Status_rules H-90/60/30/14/7 belum dipakai~~ — **LUNAS Fase 6** (Checkpoint 6.7) | Fase 4 | Fase 6 | Lunas |
+| 18 | Belum ada fitur edit custom field definition sama sekali (termasuk mengubah `is_searchable`/label/tipe field yang sudah ada) | Fase 6 | Sebelum rilis MVP bila data produksi butuh koreksi field | P2 |
+| 19 | `@tanstack/react-table` ter-install tapi tidak pernah dipakai (paginasi SQL sudah cukup, lihat `CLAUDE.md` §13) | Fase 1 | Keputusan: hapus dari dependensi atau biarkan | P2 |
 
 Aturan pemeliharaan register: diperbarui di setiap penutupan fase. Utang yang lewat batas "harus lunas" tanpa dijadwalkan ulang secara tertulis menjadi penghalang penutupan fase berikutnya.
 
