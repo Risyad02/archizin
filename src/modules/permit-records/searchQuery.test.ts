@@ -44,11 +44,23 @@ describe("buildPermitRecordWhere", () => {
     expect(params).toEqual([]);
   });
 
-  it("pencarian bebas menghasilkan 5 placeholder dengan nilai %term% yang sama", () => {
+  it("pencarian bebas menghasilkan 9 placeholder dengan nilai %term% yang sama (5 field inti + 4 kolom nilai custom field)", () => {
     const { whereSql, params } = buildPermitRecordWhere({ search: "budi" });
-    expect(params).toEqual(["%budi%", "%budi%", "%budi%", "%budi%", "%budi%"]);
+    expect(params).toHaveLength(9);
+    expect(params.every((p) => p === "%budi%")).toBe(true);
     expect(whereSql).toContain("pr.nomor_izin LIKE $1");
     expect(whereSql).toContain("pt.name LIKE $4");
+  });
+
+  it("pencarian bebas menyertakan EXISTS subquery ke custom_field_values yang is_searchable", () => {
+    const { whereSql } = buildPermitRecordWhere({ search: "budi" });
+    expect(whereSql).toContain("EXISTS (");
+    expect(whereSql).toContain("cfd.is_searchable = 1");
+    expect(whereSql).toContain("cfv.permit_record_id = pr.id");
+    expect(whereSql).toContain("cfv.value_text LIKE $6");
+    expect(whereSql).toContain("CAST(cfv.value_integer AS TEXT) LIKE $7");
+    expect(whereSql).toContain("CAST(cfv.value_decimal AS TEXT) LIKE $8");
+    expect(whereSql).toContain("cfv.value_date LIKE $9");
   });
 
   it("search di-trim dan diabaikan kalau kosong/spasi", () => {
@@ -81,8 +93,8 @@ describe("buildPermitRecordWhere", () => {
 
   it("kombinasi search + filter lain tetap konsisten penomorannya", () => {
     const { whereSql, params } = buildPermitRecordWhere({ search: "x", tahun: 2025 });
-    expect(whereSql).toContain("tahun = $6");
-    expect(params[5]).toBe(2025);
+    expect(whereSql).toContain("tahun = $10");
+    expect(params[9]).toBe(2025);
   });
 });
 

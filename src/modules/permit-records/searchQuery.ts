@@ -62,14 +62,22 @@ export function buildPermitRecordWhere(query: PermitRecordQuery): BuiltWhere {
   if (search) {
     const term = `%${search}%`;
     const placeholders: string[] = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 9; i++) {
       params.push(term);
       placeholders.push(`$${params.length}`);
     }
     conditions.push(
       `(pr.nomor_izin LIKE ${placeholders[0]} OR pr.nama_pemohon LIKE ${placeholders[1]} ` +
         `OR pr.nama_usaha LIKE ${placeholders[2]} OR pt.name LIKE ${placeholders[3]} ` +
-        `OR pr.keterangan LIKE ${placeholders[4]})`
+        `OR pr.keterangan LIKE ${placeholders[4]} OR EXISTS (` +
+        `SELECT 1 FROM custom_field_values cfv ` +
+        `JOIN custom_field_definitions cfd ON cfd.id = cfv.custom_field_definition_id ` +
+        `WHERE cfv.permit_record_id = pr.id AND cfd.is_searchable = 1 AND (` +
+        `cfv.value_text LIKE ${placeholders[5]} ` +
+        `OR CAST(cfv.value_integer AS TEXT) LIKE ${placeholders[6]} ` +
+        `OR CAST(cfv.value_decimal AS TEXT) LIKE ${placeholders[7]} ` +
+        `OR cfv.value_date LIKE ${placeholders[8]}` +
+        `)))`
     );
   }
 
