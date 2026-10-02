@@ -1,5 +1,5 @@
 // src/modules/permit-records/pages/PermitRecordDetailPage.tsx
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -20,15 +20,13 @@ import { validateAllDocumentsForRecord } from "../documents/service";
 import { getActiveStatusRules } from "../../permit-status/service";
 import { computeExpiryBadge } from "../../permit-status/expiry";
 import { ExpiryIndicator } from "../../permit-status/components/ExpiryIndicator";
+import { getAllOptionsForDefinitions } from "../../custom-fields/service";
+import type { CustomFieldValueRow } from "../types";
 
-function formatCustomValue(cv: {
-  field_type: string;
-  value_text: string | null;
-  value_integer: number | null;
-  value_decimal: number | null;
-  value_date: string | null;
-  value_boolean: number | null;
-}): string {
+function formatCustomValue(
+  cv: CustomFieldValueRow,
+  optionLabelsByDefinition: Record<number, Record<string, string>>
+): string {
   switch (cv.field_type) {
     case "boolean":
       return cv.value_boolean ? "Ya" : "Tidak";
@@ -39,10 +37,29 @@ function formatCustomValue(cv: {
     case "date":
     case "datetime":
       return cv.value_date ?? "-";
+    case "select": {
+      if (!cv.value_text) return "-";
+      const labels = optionLabelsByDefinition[cv.custom_field_definition_id] ?? {};
+      return labels[cv.value_text] ?? cv.value_text;
+    }
+    case "multiselect": {
+      if (!cv.value_text) return "-";
+      let values: string[];
+      try {
+        const parsed: unknown = JSON.parse(cv.value_text);
+        values = Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+      } catch {
+        return cv.value_text;
+      }
+      if (values.length === 0) return "-";
+      const labels = optionLabelsByDefinition[cv.custom_field_definition_id] ?? {};
+      return values.map((v) => labels[v] ?? v).join(", ");
+    }
     default:
       return cv.value_text ?? "-";
   }
 }
+
 
 function fileNameFromPath(path: string): string {
   return path.split(/[\\/]/).pop() ?? path;
@@ -84,6 +101,28 @@ function PermitRecordDetailPage() {
     queryFn: () => getDocumentsForRecord(recordId),
     enabled: !Number.isNaN(recordId),
   });
+
+  const selectDefinitionIds = useMemo(() => {
+    const ids = (detail?.customValues ?? [])
+      .filter((cv) => cv.field_type === "select" || cv.field_type === "multiselect")
+      .map((cv) => cv.custom_field_definition_id);
+    return Array.from(new Set(ids));
+  }, [detail?.customValues]);
+
+  const { data: selectOptions = [] } = useQuery({
+    queryKey: ["custom-field-options-for-definitions", selectDefinitionIds],
+    queryFn: () => getAllOptionsForDefinitions(selectDefinitionIds),
+    enabled: selectDefinitionIds.length > 0,
+  });
+
+  const optionLabelsByDefinition = useMemo(() => {
+    const map: Record<number, Record<string, string>> = {};
+    for (const opt of selectOptions) {
+      map[opt.custom_field_definition_id] ??= {};
+      map[opt.custom_field_definition_id][opt.value] = opt.label;
+    }
+    return map;
+  }, [selectOptions]);
 
   const { data: storageSettings } = useQuery({
     queryKey: ["storage-settings"],
@@ -188,6 +227,7 @@ function PermitRecordDetailPage() {
   }
 
   const { record, customValues } = detail;
+  
   const hasFolder = Boolean(record.lokasi_folder);
 
   return (
@@ -268,7 +308,7 @@ function PermitRecordDetailPage() {
             {customValues.map((cv) => (
               <div key={cv.custom_field_definition_id}>
                 <dt className="font-medium">{cv.label}</dt>
-                <dd>{formatCustomValue(cv)}</dd>
+                <dd>{formatCustomValue(cv, optionLabelsByDefinition)}</dd>
               </div>
             ))}
           </dl>
