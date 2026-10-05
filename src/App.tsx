@@ -15,12 +15,10 @@ import PermitRecordDetailPage from "./modules/permit-records/pages/PermitRecordD
 import { getStorageSettings } from "./modules/storage-settings/service"; // ganti dari needsStorageSetup
 import { grantStorageScope } from "./lib/filesystem";import { SetupStoragePage } from "./modules/storage-settings/pages/SetupStoragePage";
 import { AuditLogPage } from "./modules/audit-log/pages/AuditLogPage";
+import { DashboardPage } from "./modules/dashboard/pages/DashboardPage";
 
 type BootState = "needs-admin" | "needs-storage" | "ready";
 
-function DashboardPlaceholder() {
-  return <div>Dashboard (dibangun di Fase 7)</div>;
-}
 
 function useBootStatus() {
   return useQuery<BootState>({
@@ -64,7 +62,7 @@ function App() {
         } />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout /> } >
-            <Route path="/" element={<DashboardPlaceholder />} />
+            <Route path="/" element={<DashboardPage />} />
             <Route element={<PermissionRoute action="audit:view" />}>
               <Route path="/audit-log" element={<AuditLogPage />} />
             </Route>

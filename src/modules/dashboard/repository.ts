@@ -1,6 +1,17 @@
 import { getDb } from "../../database/db";
 import type { MonthCount } from "./stats";
-import type { TotalsRow, StatusCount, PermitTypeCount, ExpiryDateCount } from "./types";
+import type {
+  TotalsRow,
+  StatusCount,
+  PermitTypeCount,
+  ExpiryDateCount,
+  ExpiringRecord,
+} from "./types";
+import {
+  buildExpiryDateCountsQuery,
+  buildExpiringRecordsQuery,
+  type ExpiringRecordsQueryOptions,
+} from "./expiryQuery";
 
 // Semua query di sini hanya membaca, dan selalu mengecualikan data yang sudah di-soft-delete.
 
@@ -41,15 +52,17 @@ export async function countByPermitType(): Promise<PermitTypeCount[]> {
   );
 }
 
-/** Jumlah izin per tanggal berakhir; pengelompokan ke bucket dilakukan di fungsi murni (stats.ts). */
-export async function listExpiryDateCounts(): Promise<ExpiryDateCount[]> {
+/**
+ * Jumlah izin per tanggal berakhir, tanpa izin berstatus yang dikecualikan dari pemantauan
+ * masa berlaku. Pengelompokan ke bucket dilakukan di fungsi murni (stats.ts); SQL-nya
+ * dibangun di expiryQuery.ts supaya bisa dites.
+ */
+export async function listExpiryDateCounts(
+  excludedStatusCodes: readonly string[]
+): Promise<ExpiryDateCount[]> {
   const db = await getDb();
-  return db.select<ExpiryDateCount[]>(
-    `SELECT tanggal_berakhir, COUNT(*) AS total
-     FROM permit_records
-     WHERE deleted_at IS NULL
-     GROUP BY tanggal_berakhir`
-  );
+  const { sql, params } = buildExpiryDateCountsQuery(excludedStatusCodes);
+  return db.select<ExpiryDateCount[]>(sql, params);
 }
 
 /** Jumlah izin per (tahun, bulan) penerbitan. Pengisian bulan kosong dilakukan di stats.ts. */
@@ -62,4 +75,13 @@ export async function listMonthlyCounts(): Promise<MonthCount[]> {
      GROUP BY tahun, bulan
      ORDER BY tahun, bulan`
   );
+}
+
+/** Daftar izin kedaluwarsa / segera berakhir (terbatas), tanpa izin berstatus yang dikecualikan. */
+export async function listExpiringRecords(
+  options: ExpiringRecordsQueryOptions
+): Promise<ExpiringRecord[]> {
+  const db = await getDb();
+  const { sql, params } = buildExpiringRecordsQuery(options);
+  return db.select<ExpiringRecord[]>(sql, params);
 }
