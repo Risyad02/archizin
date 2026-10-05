@@ -73,8 +73,16 @@ Kriteria "selesai" untuk setiap checkpoint, fase, dan rilis MVP ada di `DEFINITI
 - [x] Lint/typecheck/unit test bersih (138 test, 13 file, naik dari 35 di akhir Fase 5) + uji manual end-to-end lolos tiap checkpoint
 - ⚠️ Utang baru dari Fase 6 (detail di `CLAUDE.md` §13 dan `DEFINITION_OF_DONE.md` §5): belum ada fitur edit custom field definition (termasuk mengubah `is_searchable` field lama); `@tanstack/react-table` nganggur
 
-## PHASE 7 — Dashboard P1
-- [ ] Kartu ringkasan + grafik ringan
+## PHASE 7 — Dashboard P1 (sedang berjalan)
+- [x] 7.1 Fungsi murni statistik: bucketExpiry, buildMonthlySeries (+6 test)
+- [x] 7.2 Query agregasi + service getDashboardSummary (SQL diverifikasi dengan data uji)
+- [x] 7.3 Halaman Dashboard: kartu ringkasan + blok "Perlu Dilengkapi"
+- [x] 7.3b Pengecualian status Dicabut/Tidak Aktif dari masa berlaku (keputusan user; daftar status tunggal di expiry.ts, dipakai dashboard dan daftar izin)
+- [x] 7.4 Daftar segera berakhir & kedaluwarsa (klik ke detail, maks 8 baris)
+- [ ] 7.5 Grafik SVG sendiri: distribusi status/jenis izin + tren penerbitan 12 bulan
+- [ ] 7.6 Panel kesehatan arsip (tanpa dokumen, tanpa folder, file hilang) + aktivitas terbaru (audit:view)
+- [ ] 7.7 Kuota Q-UI/Q-TEST/Q-DEBT + penutupan fase
+- [ ] 7.8 PermitRecordsPage membaca filter awal dari URL, supaya kartu/daftar dashboard bisa mengarah ke daftar terfilter
 
 ## PHASE 8 — Recapitulation P1
 - [ ] Rekap bulanan/triwulanan/semester/tahunan + filter
