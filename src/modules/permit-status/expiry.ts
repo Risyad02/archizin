@@ -8,6 +8,13 @@ export interface ExpiryBadge {
   overdue: boolean;
 }
 
+export const STATUS_CODES_EXCLUDED_FROM_EXPIRY: readonly string[] = ["dicabut", "tidak_aktif"];
+
+export function isExpiryTracked(statusCode: string | null | undefined): boolean {
+  if (!statusCode) return true;
+  return !STATUS_CODES_EXCLUDED_FROM_EXPIRY.includes(statusCode);
+}
+
 /**
  * Murni & bisa dites: menghitung badge masa berlaku dari tanggal_berakhir dan
  * daftar status_rules aktif (HARUS sudah terurut threshold_days menaik — sesuai
@@ -17,8 +24,11 @@ export interface ExpiryBadge {
  */
 export function computeExpiryBadge(
   tanggalBerakhir: string | null,
-  rules: StatusRule[]
+  rules: StatusRule[],
+  statusCode: string | null | undefined
 ): ExpiryBadge | null {
+  if (!isExpiryTracked(statusCode)) return null;
+
   const days = daysUntil(tanggalBerakhir);
   if (days === null) return null;
 

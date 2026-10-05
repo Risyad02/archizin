@@ -289,7 +289,7 @@ function PermitRecordDetailPage() {
             <dt className="font-medium">Tanggal Berakhir</dt>
             <dd>
               {record.tanggal_berakhir ?? "-"}
-              <ExpiryIndicator badge={computeExpiryBadge(record.tanggal_berakhir, statusRules)} />
+              <ExpiryIndicator badge={computeExpiryBadge(record.tanggal_berakhir, statusRules, record.status_code)} />
             </dd>
           </div>
           <div className="sm:col-span-2">

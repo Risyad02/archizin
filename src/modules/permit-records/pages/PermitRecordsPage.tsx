@@ -363,7 +363,7 @@ export function PermitRecordsPage() {
                     </td>
                     <td className="px-3 py-3">
                       {r.tanggal_berakhir ?? "-"}
-                      <ExpiryIndicator badge={computeExpiryBadge(r.tanggal_berakhir, statusRules)} />
+                      <ExpiryIndicator badge={computeExpiryBadge(r.tanggal_berakhir, statusRules, r.status_code)} />
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex justify-end gap-2">
@@ -395,7 +395,7 @@ export function PermitRecordsPage() {
                     {r.status_label}
                   </span>
                   <span className="text-ink-muted"> · s.d. {r.tanggal_berakhir ?? "-"}</span>
-                  <ExpiryIndicator badge={computeExpiryBadge(r.tanggal_berakhir, statusRules)} />
+                  <ExpiryIndicator badge={computeExpiryBadge(r.tanggal_berakhir, statusRules, r.status_code)} />
                 </p>
                 <div className="mt-3 flex gap-2">
                   <Link to={`/permit-records/${r.id}`} className="btn-secondary btn-sm">
