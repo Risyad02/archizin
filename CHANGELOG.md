@@ -27,6 +27,10 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/), dengan kategor
 - `src/modules/permit-records/searchQuery.ts` (`buildPermitRecordWhere`/`buildOrderBy`, murni) + `searchPermitRecords`/`getPermitRecordsPage`; `src/lib/pagination.ts` (`buildPageList`); `src/lib/useDebouncedValue.ts`; `src/components/Pagination.tsx`. `PermitRecordsPage` ditulis ulang: pencarian 5 kolom dengan debounce, filter di balik tombol, sort+arah default per kolom, page size custom 10–100, navigasi halaman bernomor
 - Pencarian meluas ke custom field: kolom `is_searchable` (sebelumnya ada di skema tapi tak pernah bisa diisi lewat aplikasi) kini punya checkbox "Bisa dicari" saat menambah field; `buildPermitRecordWhere` memakai `EXISTS` subquery ke `custom_field_values`
 - `getAllOptionsForDefinitions` (custom-fields) — menampilkan label asli opsi `select`/`multiselect` (termasuk yang sudah dinonaktifkan) di halaman detail, bukan value mentah
+- **Fase 7 (Dashboard) selesai**: modul `src/modules/dashboard/` (types/repository/service) dengan fungsi murni yang semuanya bertest — `stats.ts` (`bucketExpiry`, `buildMonthlySeries`), `headline.ts`, `expiryQuery.ts` (pembangun SQL), `expiryWindow.ts`, `daysLabel.ts`, `chartGeometry.ts` (`niceAxis`, `buildBarChartGeometry`, `barPercents`), `archiveHealth.ts`, `activity.ts`. Halaman `DashboardPage` menggantikan `DashboardPlaceholder` di rute `/`: empat angka utama, catatan izin yang tidak dihitung masa berlakunya, daftar Segera Berakhir dan Kedaluwarsa (klik ke detail), grafik tren 12 bulan (SVG buatan sendiri), sebaran per status dan per jenis izin, panel Kesehatan Arsip, panel Aktivitas Terbaru (hanya ADMIN/OPERATOR), blok Perlu Dilengkapi. Komponen `MonthlyTrendChart`, `DistributionBars`, `RecentActivity`. Tidak ada perubahan skema database di fase ini
+- `permit-status/expiry.ts`: `STATUS_CODES_EXCLUDED_FROM_EXPIRY` dan `isExpiryTracked` — satu daftar status (Dicabut, Tidak Aktif) yang dikecualikan dari hitungan dan indikator masa berlaku, dipakai dashboard dan daftar izin
+- `getRecentActivity(actor)` di service dashboard, dijaga `audit:view`
+- `lib/dateHelpers.test.ts` (Q-TEST Fase 7): test pertama untuk `deriveTahunBulan`/`daysUntil`
 
 ### Changed
 - `AppLayout.tsx`: `navItems` ditambah `{ to: "/permit-records", label: "Data Perizinan" }` — sebelumnya routing Fase 4 sudah terpasang di `App.tsx` tapi tidak ada tombol/menu navigasi yang mengarah ke sana.
@@ -38,6 +42,8 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/), dengan kategor
 - Google Fonts lewat `<link>` di `index.html` diganti font lokal `@fontsource` (aplikasi harus tetap tampil benar saat offline)
 - Semua service mutasi (`createPermitType`, `addField`, `createPermitRecord`, `updatePermitRecord`, `deletePermitRecord`, `addDocumentFromFile`, `removeDocumentLink`) menerima parameter `actor: AuthUser`, bukan `currentUserId: number` — dipakai sekaligus untuk pengecekan role dan audit log
 - `AppLayout.tsx`: `navItems` difilter berdasarkan role (`can()`); tombol Keluar memanggil `logout()` (tercatat ke audit log)
+- `App.tsx`: rute `/` kini menampilkan `DashboardPage` (placeholder dihapus)
+- `computeExpiryBadge` menerima argumen ketiga opsional `statusCode` dan mengembalikan `null` untuk status yang dikecualikan (kompatibel mundur: tanpa argumen perilakunya sama seperti sebelumnya); `PermitRecordsPage` dan halaman detail meneruskan `status_code`
 
 ### Fixed
 Beberapa isu ditemukan & diperbaiki selama setup Fase 1 — dicatat di sini supaya tidak terulang di fase berikutnya:
@@ -76,8 +82,13 @@ Beberapa isu ditemukan & diperbaiki selama setup Fase 1 — dicatat di sini supa
 - **Beberapa kesalahan di test, bukan di kode produksi**: dua kali salah hitung nomor placeholder SQL di `searchQuery.test.ts`, dan helper `dateInDays` di `expiry.test.ts` salah zona waktu (`toISOString()` mengonversi ke UTC, tengah malam WIB jadi mundur satu hari). Di semua kasus ini kode produksi sudah benar; yang diperbaiki hanya assertion/helper test. **Pelajaran: saat test gagal, cek dulu di sisi mana bug-nya sebelum "memperbaiki" kode produksi yang sebenarnya sudah benar.**
 - **`vi.mock` factory untuk `pathExists` sempat tidak lengkap** (lupa menambah `pathExists: vi.fn()` ke objek yang dikembalikan), menyebabkan `.mockResolvedValue` gagal karena memanggil implementasi asli, bukan mock.
 
+- **TS1261 "differs only in casing" setelah nama berkas diganti manual (Fase 7)**: nama berkas di disk berbeda huruf dari baris `import` (`Dayslabel`/`daysLabel`, `Expiryquery`/`expiryQuery`, `expirywindow`/`expiryWindow`). Windows tidak membedakan huruf besar-kecil sehingga `vitest` tetap hijau, tetapi `tsc` menolak. Diperbaiki dengan menyamakan enam baris `import` dengan nama berkas; di Linux/CI hal ini akan gagal total.
+- **`parseSqliteUtc` meloloskan tanggal tidak sah (Fase 7)**: `Date.UTC` menormalkan nilai di luar rentang tanpa error, jadi `2026-13-45 99:99:99` dibaca sebagai tanggal sah di tahun berikutnya. Diperbaiki dengan mencocokkan ulang tiap komponen setelah konstruksi. Tertangkap oleh test sebelum dipakai.
+- **Label sebaran terpotong di Dashboard (Fase 7)**: kolom label terlalu sempit dengan `truncate` (nama jenis izin panjang jadi "…"). Diganti `line-clamp-2` dan kolom lebih lebar.
+
 ### Removed
 - File nyasar `src-tauri/2` (lihat Fixed)
+- `@tanstack/react-table` dari dependensi (Fase 7, keputusan user): tidak pernah dipakai karena paginasi dan sort dilakukan di SQL
 
 ### Security
 - (belum ada)

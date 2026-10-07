@@ -105,7 +105,7 @@ Saat ini hanya level 1 yang ada. Target akhir:
 
 | Level | Isi | Status | Wajib pada |
 |---|---|---|---|
-| Unit | Logika murni, validasi, helper | Ada (35 test) | Setiap checkpoint |
+| Unit | Logika murni, validasi, helper | Ada (199 test, 23 file) | Setiap checkpoint |
 | Integrasi | Repository dan service terhadap SQLite sungguhan (file temporary) | **Belum ada** | Sebelum Fase 9 (Import/Export) dan Fase 11 (Backup/Restore) |
 | Komponen | Halaman dan form React dengan Testing Library (sudah terpasang) | **Belum ada** | Untuk form dan alur kritikal, dimulai Fase 6 |
 | Akseptansi | Skrip manual ujung ke ujung berbasis kriteria Level 3 | Belum ada | Sebelum rilis MVP |
@@ -231,7 +231,7 @@ Sesuai keputusan awal, yang berikut **bukan** bagian dokumen ini dan tidak diker
 
 ## 5. Register utang dan celah saat ini
 
-Kondisi per akhir Fase 5, dibandingkan dengan dokumen ini. Prioritas: **P0** memblokir rilis, **P1** harus lunas sebelum fase yang disebut selesai, **P2** dijadwalkan.
+Kondisi per akhir Fase 7, dibandingkan dengan dokumen ini. Prioritas: **P0** memblokir rilis, **P1** harus lunas sebelum fase yang disebut selesai, **P2** dijadwalkan.
 
 | # | Celah | Sejak | Harus lunas | Prioritas |
 |---|---|---|---|---|
@@ -250,7 +250,12 @@ Kondisi per akhir Fase 5, dibandingkan dengan dokumen ini. Prioritas: **P0** mem
 | 16 | Fitur "Pindah Lokasi Penyimpanan" belum ada (di luar scope Fase 5 sesuai keputusan) | Fase 5 | Sebelum rilis MVP bila pengguna butuh pindah disk; keputusan | P2 |
 | ~~17~~ | ~~Status_rules H-90/60/30/14/7 belum dipakai~~ — **LUNAS Fase 6** (Checkpoint 6.7) | Fase 4 | Fase 6 | Lunas |
 | 18 | Belum ada fitur edit custom field definition sama sekali (termasuk mengubah `is_searchable`/label/tipe field yang sudah ada) | Fase 6 | Sebelum rilis MVP bila data produksi butuh koreksi field | P2 |
-| 19 | `@tanstack/react-table` ter-install tapi tidak pernah dipakai (paginasi SQL sudah cukup, lihat `CLAUDE.md` §13) | Fase 1 | Keputusan: hapus dari dependensi atau biarkan | P2 |
+| ~~19~~ | ~~`@tanstack/react-table` ter-install tapi tidak pernah dipakai~~ — **LUNAS Fase 7** (keputusan user: dihapus dari dependensi; dipasang lagi bila suatu saat benar-benar dibutuhkan) | Fase 1 | Fase 7 | Lunas |
+| 20 | Query SQL modul `dashboard` (8 query: total, per status, per jenis izin, per tanggal berakhir, per bulan, kesehatan arsip, aktivitas, daftar perhatian) hanya diverifikasi manual dengan data uji dan skrip pembanding; belum ada integration test terhadap SQLite sungguhan (butuh ADR adapter DB, lihat §6 poin 1) | Fase 7 | Sebelum Fase 9 (bersama #12) | P1 |
+| 21 | `PermitRecordsPage` menyimpan filter di state, tidak membaca URL — kartu/daftar dashboard belum bisa menaut ke daftar yang sudah terfilter (checkpoint 7.8 digeser) | Fase 7 | Fase 8 (rekap butuh mekanisme yang sama) | P2 |
+| 22 | `daysUntil` (`lib/dateHelpers.ts`) mem-parse `YYYY-MM-DD` sebagai UTC lalu membandingkannya dengan tengah malam lokal. Aman di UTC+7..+9 dan UTC; di zona negatif bisa menghasilkan `-0` (hari ini = `-0`), di UTC+12/+13 selisihnya lebih satu hari (hasil uji `Pacific/Auckland`: besok = 2). Perbaikan kecil: parse komponen tanggal sebagai tanggal lokal. Tidak berdampak selama target Windows/Indonesia | Fase 4 (ditemukan Fase 7) | Sebelum keputusan cross-platform atau zona di luar Indonesia | P2 |
+| 23 | Kalimat panel Aktivitas Terbaru memakai `ENTITY_LABELS`/`ACTION_VERBS` yang ditulis manual (`dashboard/activity.ts`); entity atau aksi baru (import, backup, restore) tampil apa adanya sampai ditambahkan | Fase 7 | Saat Fase 9/11 menambah aksi audit baru | P2 |
+| 24 | Baseline performa belum tercatat: §3.5 menjadwalkan pengukuran dengan dataset realistis (ribuan izin/dokumen) di Fase 6, dan dashboard Fase 7 menambah 8 query agregasi yang jalan tiap halaman dibuka | Fase 6 | Diukur saat Fase 8 (query rekap berikutnya yang berat), sebelum rilis MVP | P1 |
 
 Aturan pemeliharaan register: diperbarui di setiap penutupan fase. Utang yang lewat batas "harus lunas" tanpa dijadwalkan ulang secara tertulis menjadi penghalang penutupan fase berikutnya.
 

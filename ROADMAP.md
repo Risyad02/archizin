@@ -2,7 +2,7 @@
 
 Sumber: `05_IMPLEMENTATION_PLAN.md`. Dokumen ini yang dijaga up-to-date (centang checklist) seiring progres; `05_IMPLEMENTATION_PLAN.md` tetap sebagai arsip proposal awal.
 
-Status keseluruhan: **Fase 6 (Search/Filter/Sort) selesai — Fase 7 (Dashboard) berikutnya**
+Status keseluruhan: **Fase 7 (Dashboard) selesai — Fase 8 (Rekapitulasi) berikutnya**
 Kriteria "selesai" untuk setiap checkpoint, fase, dan rilis MVP ada di `DEFINITION_OF_DONE.md`. Sebuah item hanya boleh dicentang bila kriteria di sana terpenuhi.
 
 ## PHASE 0 — Discovery & Architecture ✅ Selesai
@@ -73,16 +73,18 @@ Kriteria "selesai" untuk setiap checkpoint, fase, dan rilis MVP ada di `DEFINITI
 - [x] Lint/typecheck/unit test bersih (138 test, 13 file, naik dari 35 di akhir Fase 5) + uji manual end-to-end lolos tiap checkpoint
 - ⚠️ Utang baru dari Fase 6 (detail di `CLAUDE.md` §13 dan `DEFINITION_OF_DONE.md` §5): belum ada fitur edit custom field definition (termasuk mengubah `is_searchable` field lama); `@tanstack/react-table` nganggur
 
-## PHASE 7 — Dashboard P1 (sedang berjalan)
-- [x] 7.1 Fungsi murni statistik: bucketExpiry, buildMonthlySeries (+6 test)
-- [x] 7.2 Query agregasi + service getDashboardSummary (SQL diverifikasi dengan data uji)
-- [x] 7.3 Halaman Dashboard: kartu ringkasan + blok "Perlu Dilengkapi"
-- [x] 7.3b Pengecualian status Dicabut/Tidak Aktif dari masa berlaku (keputusan user; daftar status tunggal di expiry.ts, dipakai dashboard dan daftar izin)
-- [x] 7.4 Daftar segera berakhir & kedaluwarsa (klik ke detail, maks 8 baris)
-- [ ] 7.5 Grafik SVG sendiri: distribusi status/jenis izin + tren penerbitan 12 bulan
-- [ ] 7.6 Panel kesehatan arsip (tanpa dokumen, tanpa folder, file hilang) + aktivitas terbaru (audit:view)
-- [ ] 7.7 Kuota Q-UI/Q-TEST/Q-DEBT + penutupan fase
-- [ ] 7.8 PermitRecordsPage membaca filter awal dari URL, supaya kartu/daftar dashboard bisa mengarah ke daftar terfilter
+## PHASE 7 — Dashboard P1 ✅ Selesai
+- [x] 7.1 Fungsi murni statistik (`dashboard/stats.ts`: `bucketExpiry`, `buildMonthlySeries`) + test
+- [x] 7.2 Query agregasi + `getDashboardSummary` (types/repository/service); SQL diverifikasi dengan data uji
+- [x] 7.3 `DashboardPage` menggantikan placeholder: empat angka utama (Total, Aktif, Segera Berakhir, Kedaluwarsa), blok "Perlu Dilengkapi", empat keadaan halaman (memuat/kosong/error/berhasil)
+- [x] 7.3b Pengecualian status Dicabut/Tidak Aktif dari hitungan dan indikator masa berlaku — **keputusan user**; satu daftar kode status (`STATUS_CODES_EXCLUDED_FROM_EXPIRY` di `permit-status/expiry.ts`) dipakai dashboard dan daftar izin, jadi keduanya tidak bisa berbeda pendapat. Draft tetap dipantau
+- [x] 7.4 Daftar "Segera Berakhir" dan "Kedaluwarsa" (maks 8 baris, klik ke detail); rentang tanggal dihitung di JS (tanggal lokal), bukan `date('now')` SQLite yang memakai UTC
+- [x] 7.5 Grafik buatan sendiri tanpa library (aplikasi offline, bundle kecil, tampilan mengikuti design system): tren 12 bulan (SVG, geometri murni di `chartGeometry.ts`) dan sebaran per status/jenis izin (batang CSS)
+- [x] 7.6 Panel **Kesehatan Arsip** (dokumen file tidak ditemukan, izin tanpa folder, izin tanpa dokumen, dokumen belum dicek) + **Aktivitas Terbaru** (`getRecentActivity`, dijaga `audit:view` di service; UI hanya menyembunyikan panel)
+- [x] 7.7a Q-TEST: `lib/dateHelpers.ts` (modul lama tanpa test) kini bertest (`dateHelpers.test.ts`)
+- [x] 7.7 Penutupan: ROADMAP/CHANGELOG/CLAUDE.md/DEFINITION_OF_DONE.md diperbarui, `@tanstack/react-table` dihapus dari dependensi (keputusan user), data uji dashboard dibersihkan
+- [ ] 7.8 `PermitRecordsPage` membaca filter awal dari URL supaya kartu/daftar dashboard bisa mengarah ke daftar terfilter — **DIGESER ke Fase 8** (rekap butuh mekanisme yang sama, lebih hemat dikerjakan sekali); dicatat sebagai utang #21
+- ⚠️ Utang baru dari Fase 7 (detail di `DEFINITION_OF_DONE.md` §5): #20 query SQL dashboard belum punya integration test; #21 filter via URL; #22 `daysUntil` bergantung zona waktu (aman di UTC+7..+9, dicatat karena ditemukan saat menulis test); #23 label aktivitas ditulis manual; #24 baseline performa belum diukur
 
 ## PHASE 8 — Recapitulation P1
 - [ ] Rekap bulanan/triwulanan/semester/tahunan + filter
@@ -101,7 +103,7 @@ Kriteria "selesai" untuk setiap checkpoint, fase, dan rilis MVP ada di `DEFINITI
 
 ## PHASE 12 — Testing P0 (berjalan sepanjang fase)
 - [ ] Acceptance test MVP lengkap
-- ⚠️ 138 unit test (13 file) — mencakup semua modul inti plus `permissions`, `searchQuery`, `pagination`, `expiry`. Test mock-based pertama muncul di Fase 6 Checkpoint 6.4 (`folderSync`, `documents`, `storage-settings`). Masih belum ada integration test terhadap DB SQLite sungguhan, dan belum ada test komponen React sama sekali — lihat `DEFINITION_OF_DONE.md` bagian Piramida Test untuk rencananya.
+- ⚠️ 199 unit test (23 file) — mencakup semua modul inti plus `permissions`, `searchQuery`, `pagination`, `expiry`, `dashboard` (statistik, pembangun query, geometri grafik, aktivitas) dan `dateHelpers`. Test mock-based pertama muncul di Fase 6 Checkpoint 6.4 (`folderSync`, `documents`, `storage-settings`). Masih belum ada integration test terhadap DB SQLite sungguhan, dan belum ada test komponen React sama sekali — lihat `DEFINITION_OF_DONE.md` bagian Piramida Test untuk rencananya.
 
 ## PHASE 13 — Packaging P1
 - [ ] Installer Windows (.msi/.exe)
@@ -114,7 +116,7 @@ Setiap fase wajib memuat kuota Q-UI, Q-TEST, dan Q-DEBT (definisi di `DEFINITION
 |---|---|---|---|
 | 5 | Penyeragaman UI + responsif semua halaman (dikerjakan sebelum kuota ini ada) | — | — |
 | 6 | Perbaikan tampilan field dinamis (label "0" hilang, select/multiselect tampil label asli, bukan JSON mentah) | Test mock-based pertama di codebase (`folderSync`/`documents`/`storage-settings`, Checkpoint 6.4) + `searchQuery.ts`/`pagination.ts` murni dengan test penuh | U-05, U-06, U-09, U-15, dan U-01 lanjutan (searchable) lunas; #1/#2/#3 (role, audit, path) lunas |
-| 7 | | | |
+| 7 | Dashboard dengan grafik buatan sendiri (tanpa library, mengikuti design system), empat keadaan halaman, label sebaran dua baris tidak lagi terpotong | `lib/dateHelpers.ts` (`daysUntil`, `deriveTahunBulan`) — modul lama tanpa test — kini bertest (Checkpoint 7.7a); test ini sekaligus menemukan ketergantungan zona waktu (#22) | #19 lunas (`@tanstack/react-table` dihapus); utang baru #20–#24 tercatat |
 
 ---
 Update terakhir: dicatat di `CHANGELOG.md` setiap ada perubahan status fase.
