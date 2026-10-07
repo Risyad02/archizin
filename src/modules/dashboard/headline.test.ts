@@ -3,6 +3,16 @@ import { deriveHeadlineStats } from "./headline";
 import { bucketExpiry } from "./stats";
 import type { DashboardSummary } from "./types";
 
+const EMPTY_ARCHIVE_HEALTH = {
+  totalRecords: 0,
+  withoutDocuments: 0,
+  withoutFolder: 0,
+  totalDocuments: 0,
+  documentsNotFound: 0,
+  recordsWithMissingDocuments: 0,
+  documentsUnchecked: 0,
+};
+
 function makeSummary(overrides: Partial<DashboardSummary> = {}): DashboardSummary {
   return {
     total: 0,
@@ -13,6 +23,7 @@ function makeSummary(overrides: Partial<DashboardSummary> = {}): DashboardSummar
     byPermitType: [],
     expiry: bucketExpiry([], [7, 14, 30, 60, 90]),
     monthly: [],
+    archiveHealth: EMPTY_ARCHIVE_HEALTH,
     attention: { overdue: [], upcoming: [] },
     ...overrides,
   };

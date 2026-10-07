@@ -45,6 +45,42 @@ export interface AttentionRecord extends ExpiringRecord {
   days: number | null;
 }
 
+/** Hitungan untuk panel "Kesehatan Arsip". Berlaku untuk semua izin yang belum dihapus, apa pun statusnya. */
+export interface ArchiveHealthCounts {
+  totalRecords: number;
+  /** Izin tanpa satu pun tautan dokumen. */
+  withoutDocuments: number;
+  /** Izin yang lokasi_folder-nya kosong. */
+  withoutFolder: number;
+  totalDocuments: number;
+  /** Dokumen berstatus not_found ("File tidak ditemukan"). */
+  documentsNotFound: number;
+  /** Jumlah izin yang punya setidaknya satu dokumen not_found. */
+  recordsWithMissingDocuments: number;
+  /** Dokumen berstatus unchecked (belum pernah dicek). */
+  documentsUnchecked: number;
+}
+
+/** Baris mentah aktivitas terbaru dari audit_logs (tanpa old_value/new_value). */
+export interface ActivityRow {
+  id: number;
+  action: string;
+  entity: string;
+  record_id: number | null;
+  /** Format SQLite datetime('now'): "YYYY-MM-DD HH:MM:SS" dalam UTC, tanpa penanda zona. */
+  timestamp: string;
+  actor_name: string | null;
+}
+
+export interface ActivityItem {
+  id: number;
+  description: string;
+  actorName: string;
+  timestamp: string;
+  /** Diisi hanya kalau ada halaman detail yang bisa dibuka (izin yang belum dihapus). */
+  recordId: number | null;
+}
+
 export interface DashboardSummary {
   total: number;
   withoutIssueDate: number;
@@ -56,6 +92,7 @@ export interface DashboardSummary {
   byPermitType: PermitTypeCount[];
   expiry: ExpiryBucket[];
   monthly: MonthlyPoint[];
+  archiveHealth: ArchiveHealthCounts;
   /** Daftar terbatas (lihat ATTENTION_LIMIT di service); jumlah lengkapnya ada di bucket expiry. */
   attention: {
     overdue: AttentionRecord[];

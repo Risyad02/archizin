@@ -6,6 +6,8 @@ import type {
   PermitTypeCount,
   ExpiryDateCount,
   ExpiringRecord,
+  ArchiveHealthCounts,
+  ActivityRow,
 } from "./types";
 import {
   buildExpiryDateCountsQuery,
@@ -84,4 +86,78 @@ export async function listExpiringRecords(
   const db = await getDb();
   const { sql, params } = buildExpiringRecordsQuery(options);
   return db.select<ExpiringRecord[]>(sql, params);
+}
+
+interface RecordHealthRow {
+  total_records: number;
+  without_documents: number;
+  without_folder: number;
+}
+
+interface DocumentHealthRow {
+  total_documents: number;
+  not_found: number;
+  unchecked: number;
+  records_with_missing: number;
+}
+
+/**
+ * Hitungan kesehatan arsip. Sengaja TIDAK memakai pengecualian status masa berlaku:
+ * folder dan dokumen perlu lengkap untuk semua izin, termasuk yang dicabut atau tidak aktif.
+ */
+export async function getArchiveHealthCounts(): Promise<ArchiveHealthCounts> {
+  const db = await getDb();
+
+  const recordRows = await db.select<RecordHealthRow[]>(
+    `SELECT
+       COUNT(*) AS total_records,
+       COALESCE(SUM(CASE
+         WHEN NOT EXISTS (SELECT 1 FROM document_links dl WHERE dl.permit_record_id = pr.id)
+         THEN 1 ELSE 0 END), 0) AS without_documents,
+       COALESCE(SUM(CASE
+         WHEN pr.lokasi_folder IS NULL OR pr.lokasi_folder = ''
+         THEN 1 ELSE 0 END), 0) AS without_folder
+     FROM permit_records pr
+     WHERE pr.deleted_at IS NULL`
+  );
+
+  const documentRows = await db.select<DocumentHealthRow[]>(
+    `SELECT
+       COUNT(*) AS total_documents,
+       COALESCE(SUM(CASE WHEN dl.status = 'not_found' THEN 1 ELSE 0 END), 0) AS not_found,
+       COALESCE(SUM(CASE WHEN dl.status = 'unchecked' THEN 1 ELSE 0 END), 0) AS unchecked,
+       COUNT(DISTINCT CASE WHEN dl.status = 'not_found' THEN dl.permit_record_id END) AS records_with_missing
+     FROM document_links dl
+     JOIN permit_records pr ON pr.id = dl.permit_record_id AND pr.deleted_at IS NULL`
+  );
+
+  const records = recordRows[0];
+  const documents = documentRows[0];
+
+  return {
+    totalRecords: records?.total_records ?? 0,
+    withoutDocuments: records?.without_documents ?? 0,
+    withoutFolder: records?.without_folder ?? 0,
+    totalDocuments: documents?.total_documents ?? 0,
+    documentsNotFound: documents?.not_found ?? 0,
+    recordsWithMissingDocuments: documents?.records_with_missing ?? 0,
+    documentsUnchecked: documents?.unchecked ?? 0,
+  };
+}
+
+/**
+ * Aktivitas terbaru dari audit_logs. Tanpa old_value/new_value (bisa besar; dashboard tidak
+ * memerlukannya). Pemanggil (service) wajib sudah memeriksa izin audit:view.
+ */
+export async function listRecentActivity(limit: number): Promise<ActivityRow[]> {
+  const db = await getDb();
+  return db.select<ActivityRow[]>(
+    `SELECT al.id, al.action, al.entity, al.record_id, al.timestamp,
+            COALESCE(u.full_name, u.username) AS actor_name
+     FROM audit_logs al
+     LEFT JOIN users u ON u.id = al.user_id
+     ORDER BY al.timestamp DESC, al.id DESC
+     LIMIT $1`,
+    [limit]
+  );
 }

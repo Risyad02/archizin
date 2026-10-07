@@ -5,7 +5,11 @@ import { Link } from "react-router-dom";
 import { getDashboardSummary } from "../service";
 import { deriveHeadlineStats } from "../headline";
 import { formatDaysLabel } from "../daysLabel";
+import { buildArchiveHealthItems } from "../archiveHealth";
 import type { AttentionRecord } from "../types";
+import { MonthlyTrendChart } from "../components/MonthlyTrendChart";
+import { DistributionBars } from "../components/DistributionBars";
+import { RecentActivity } from "../components/RecentActivity";
 import { useAuthStore } from "../../../store/authStore";
 import { can } from "../../../lib/permissions";
 
@@ -175,6 +179,10 @@ export function DashboardPage() {
     { label: "Izin tanpa status", value: stats.withoutStatus },
   ].filter((item) => item.value > 0);
 
+  const healthItems = buildArchiveHealthItems(summary.archiveHealth);
+  // UI hanya menyembunyikan panel; getRecentActivity di service tetap menolak role tanpa audit:view.
+  const showActivity = can(currentUser?.role, "audit:view");
+
   return (
     <div className="space-y-6">
       {header}
@@ -225,6 +233,63 @@ export function DashboardPage() {
           emptyText="Tidak ada izin yang kedaluwarsa."
           overdue
         />
+      </div>
+
+      <section className="panel" aria-label="Tren penerbitan">
+        <h2 className="section-title mb-4">Izin Terbit per Bulan · 12 Bulan Terakhir</h2>
+        <MonthlyTrendChart points={summary.monthly} />
+      </section>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <section className="panel" aria-label="Sebaran status">
+          <h2 className="section-title mb-4">Per Status</h2>
+          <DistributionBars
+            emptyText="Belum ada data."
+            items={summary.byStatus.map((s) => ({ key: s.status_id, label: s.label, total: s.total }))}
+          />
+        </section>
+        <section className="panel" aria-label="Sebaran jenis izin">
+          <h2 className="section-title mb-4">Per Jenis Izin</h2>
+          <DistributionBars
+            emptyText="Belum ada data."
+            items={summary.byPermitType.map((t) => ({ key: t.permit_type_id, label: t.name, total: t.total }))}
+          />
+        </section>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <section
+          className={`panel ${showActivity ? "" : "lg:col-span-2"}`}
+          aria-label="Kesehatan arsip"
+        >
+          <h2 className="section-title mb-3">Kesehatan Arsip</h2>
+          {healthItems.length === 0 ? (
+            <p className="text-sm text-ink-muted">
+              Semua izin sudah punya folder dan dokumen, dan tidak ada file yang hilang.
+            </p>
+          ) : (
+            <ul className="divide-y divide-line text-sm">
+              {healthItems.map((item) => (
+                <li key={item.key} className="flex items-baseline justify-between gap-4 py-2">
+                  <span>
+                    {item.label}
+                    {item.note && (
+                      <span className="block text-xs text-ink-muted">{item.note}</span>
+                    )}
+                  </span>
+                  <span className="shrink-0 font-mono tabular-nums">
+                    <span className={item.severity === "problem" ? "text-danger" : ""}>
+                      {numberFormat.format(item.value)}
+                    </span>
+                    <span className="text-ink-muted"> / {numberFormat.format(item.of)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {showActivity && <RecentActivity now={today} />}
       </div>
 
       {attention.length > 0 && (

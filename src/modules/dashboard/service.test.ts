@@ -1,10 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as repo from "./repository";
 import { getActiveStatusRules } from "../permit-status/service";
-import { getDashboardSummary, ATTENTION_LIMIT } from "./service";
+import {
+  getDashboardSummary,
+  getRecentActivity,
+  ATTENTION_LIMIT,
+  ACTIVITY_LIMIT,
+} from "./service";
+import { PermissionError } from "../../lib/permissions";
+import type { AuthUser } from "../auth/types";
 import { STATUS_CODES_EXCLUDED_FROM_EXPIRY } from "../permit-status/expiry";
 import type { StatusRule } from "../permit-status/types";
-import type { ExpiringRecord } from "./types";
+import type { ActivityRow, ArchiveHealthCounts, ExpiringRecord } from "./types";
 
 // Semua fungsi yang dipanggil service WAJIB disebut di factory — nama yang tidak
 // disebut tidak akan menjadi vi.fn() (lihat jebakan vi.mock di handoff).
@@ -15,6 +22,8 @@ vi.mock("./repository", () => ({
   listExpiryDateCounts: vi.fn(),
   listMonthlyCounts: vi.fn(),
   listExpiringRecords: vi.fn(),
+  getArchiveHealthCounts: vi.fn(),
+  listRecentActivity: vi.fn(),
 }));
 
 vi.mock("../permit-status/service", () => ({
@@ -48,6 +57,24 @@ function expiring(overrides: Partial<ExpiringRecord> = {}): ExpiringRecord {
   };
 }
 
+function emptyHealth(overrides: Partial<ArchiveHealthCounts> = {}): ArchiveHealthCounts {
+  return {
+    totalRecords: 0,
+    withoutDocuments: 0,
+    withoutFolder: 0,
+    totalDocuments: 0,
+    documentsNotFound: 0,
+    recordsWithMissingDocuments: 0,
+    documentsUnchecked: 0,
+    ...overrides,
+  };
+}
+
+function actor(role: AuthUser["role"]): AuthUser {
+  // Hanya id dan role yang dibaca service; bentuk AuthUser lainnya tidak relevan di sini.
+  return { id: 1, username: "uji", full_name: "Uji", role } as unknown as AuthUser;
+}
+
 function totalsByKey(summary: Awaited<ReturnType<typeof getDashboardSummary>>) {
   return Object.fromEntries(summary.expiry.map((b) => [b.key, b.total]));
 }
@@ -58,6 +85,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date(2026, 9, 2, 12, 0, 0));
   // Default: tidak ada izin di daftar perhatian (afterEach me-reset semua mock).
   vi.mocked(repo.listExpiringRecords).mockResolvedValue([]);
+  vi.mocked(repo.getArchiveHealthCounts).mockResolvedValue(emptyHealth());
 });
 
 afterEach(() => {
@@ -90,9 +118,20 @@ describe("getDashboardSummary", () => {
       { tahun: 2025, bulan: 11, total: 1 },
     ]);
     vi.mocked(getActiveStatusRules).mockResolvedValue([7, 14, 30, 60, 90].map(rule));
+    const health = emptyHealth({
+      totalRecords: 20,
+      withoutDocuments: 11,
+      withoutFolder: 11,
+      totalDocuments: 6,
+      documentsNotFound: 2,
+      recordsWithMissingDocuments: 2,
+      documentsUnchecked: 1,
+    });
+    vi.mocked(repo.getArchiveHealthCounts).mockResolvedValue(health);
 
     const summary = await getDashboardSummary();
 
+    expect(summary.archiveHealth).toEqual(health);
     expect(summary.total).toBe(20);
     expect(summary.withoutIssueDate).toBe(4);
     expect(summary.withoutStatus).toBe(3); // 20 - (12 + 5)
@@ -214,5 +253,61 @@ describe("getDashboardSummary", () => {
     vi.mocked(getActiveStatusRules).mockResolvedValue([]);
 
     await expect(getDashboardSummary()).rejects.toThrow("db gagal");
+  });
+});
+
+describe("getRecentActivity", () => {
+  const rows: ActivityRow[] = [
+    {
+      id: 5,
+      action: "CREATE",
+      entity: "permit_records",
+      record_id: 9,
+      timestamp: "2026-10-02 04:00:00",
+      actor_name: "Budi",
+    },
+    {
+      id: 4,
+      action: "DELETE",
+      entity: "permit_records",
+      record_id: 3,
+      timestamp: "2026-10-02 03:00:00",
+      actor_name: null,
+    },
+  ];
+
+  it("VIEWER ditolak sebelum query apa pun dijalankan", async () => {
+    await expect(getRecentActivity(actor("VIEWER"))).rejects.toThrow(PermissionError);
+    expect(repo.listRecentActivity).not.toHaveBeenCalled();
+  });
+
+  it("OPERATOR dan ADMIN boleh; baris diubah jadi kalimat dengan batas jumlah yang benar", async () => {
+    vi.mocked(repo.listRecentActivity).mockResolvedValue(rows);
+
+    const items = await getRecentActivity(actor("OPERATOR"));
+    await getRecentActivity(actor("ADMIN"));
+
+    expect(repo.listRecentActivity).toHaveBeenCalledWith(ACTIVITY_LIMIT);
+    expect(items).toEqual([
+      {
+        id: 5,
+        description: "Menambah data izin",
+        actorName: "Budi",
+        timestamp: "2026-10-02 04:00:00",
+        recordId: 9,
+      },
+      {
+        id: 4,
+        description: "Menghapus data izin",
+        actorName: "Sistem",
+        timestamp: "2026-10-02 03:00:00",
+        recordId: null,
+      },
+    ]);
+  });
+
+  it("jalur gagal: error dari repository diteruskan", async () => {
+    vi.mocked(repo.listRecentActivity).mockRejectedValue(new Error("db gagal"));
+    await expect(getRecentActivity(actor("ADMIN"))).rejects.toThrow("db gagal");
   });
 });

@@ -4,11 +4,16 @@ import { getActiveStatusRules } from "../permit-status/service";
 import { STATUS_CODES_EXCLUDED_FROM_EXPIRY } from "../permit-status/expiry";
 import { bucketExpiry, buildMonthlySeries } from "./stats";
 import { buildExpiryWindow } from "./expiryWindow";
-import type { AttentionRecord, DashboardSummary, ExpiringRecord } from "./types";
+import { toActivityItem } from "./activity";
+import { assertCan } from "../../lib/permissions";
+import type { AuthUser } from "../auth/types";
+import type { ActivityItem, AttentionRecord, DashboardSummary, ExpiringRecord } from "./types";
 
 const TREND_MONTHS = 12;
 /** Jumlah baris maksimum per daftar "perlu perhatian" di dashboard. */
 export const ATTENTION_LIMIT = 8;
+/** Jumlah baris maksimum panel "Aktivitas Terbaru". */
+export const ACTIVITY_LIMIT = 8;
 
 function withDays(rows: ExpiringRecord[]): AttentionRecord[] {
   return rows.map((row) => ({ ...row, days: daysUntil(row.tanggal_berakhir) }));
@@ -29,13 +34,22 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   const now = new Date();
   const window = maxDays === null ? null : buildExpiryWindow(now, maxDays);
 
-  const [totals, byStatus, byPermitType, expiryRows, monthlyRows, overdueRows, upcomingRows] =
-    await Promise.all([
+  const [
+    totals,
+    byStatus,
+    byPermitType,
+    expiryRows,
+    monthlyRows,
+    archiveHealth,
+    overdueRows,
+    upcomingRows,
+  ] = await Promise.all([
       repo.getTotals(),
       repo.countByStatus(),
       repo.countByPermitType(),
       repo.listExpiryDateCounts(STATUS_CODES_EXCLUDED_FROM_EXPIRY),
       repo.listMonthlyCounts(),
+      repo.getArchiveHealthCounts(),
       repo.listExpiringRecords({
         kind: "overdue",
         today: buildExpiryWindow(now, 0).today,
@@ -78,9 +92,21 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     byPermitType,
     expiry,
     monthly,
+    archiveHealth,
     attention: {
       overdue: withDays(overdueRows),
       upcoming: withDays(upcomingRows),
     },
   };
+}
+
+/**
+ * Aktivitas terbaru untuk dashboard. Dijaga audit:view (ADMIN/OPERATOR), sama seperti halaman
+ * Log Aktivitas — VIEWER tidak boleh melihat siapa mengubah apa. assertCan di baris pertama,
+ * sebelum query apa pun.
+ */
+export async function getRecentActivity(actor: AuthUser): Promise<ActivityItem[]> {
+  assertCan(actor.role, "audit:view");
+  const rows = await repo.listRecentActivity(ACTIVITY_LIMIT);
+  return rows.map(toActivityItem);
 }
