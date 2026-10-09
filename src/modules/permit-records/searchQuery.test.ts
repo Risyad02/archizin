@@ -96,6 +96,27 @@ describe("buildPermitRecordWhere", () => {
     expect(whereSql).toContain("tahun = $10");
     expect(params[9]).toBe(2025);
   });
+
+  it("rentang tanggal_terbit dari dan sampai", () => {
+    const { whereSql, params } = buildPermitRecordWhere({
+      tanggalTerbitFrom: "2026-01-01",
+      tanggalTerbitTo: "2026-03-31",
+    });
+    expect(whereSql).toContain("pr.tanggal_terbit >= $1");
+    expect(whereSql).toContain("pr.tanggal_terbit <= $2");
+    expect(params).toEqual(["2026-01-01", "2026-03-31"]);
+  });
+
+  it("filter terbit digabung dengan filter berakhir: penomoran berurutan, berakhir lebih dulu", () => {
+    const { whereSql, params } = buildPermitRecordWhere({
+      tanggalBerakhirTo: "2026-12-31",
+      tanggalTerbitFrom: "2026-01-01",
+    });
+    expect(whereSql).toBe(
+      "WHERE pr.deleted_at IS NULL AND pr.tanggal_berakhir <= $1 AND pr.tanggal_terbit >= $2"
+    );
+    expect(params).toEqual(["2026-12-31", "2026-01-01"]);
+  });
 });
 
 describe("buildOrderBy", () => {

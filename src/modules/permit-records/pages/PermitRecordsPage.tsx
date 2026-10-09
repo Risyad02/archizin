@@ -1,7 +1,7 @@
 // src/modules/permit-records/pages/PermitRecordsPage.tsx
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { getPermitRecordsPage, deletePermitRecord } from "../service";
 import { getActivePermitTypes } from "../../permit-types/service";
@@ -21,6 +21,7 @@ import {
   type SortDirection,
   type PermitRecordQuery,
 } from "../searchQuery";
+import { parseListFilters, countActiveFilters, type ListFilters } from "../listFilters";
 import type { PermitRecord } from "../types";
 
 const SORT_OPTIONS: { value: PermitRecordSortBy; label: string }[] = [
@@ -31,18 +32,32 @@ const SORT_OPTIONS: { value: PermitRecordSortBy; label: string }[] = [
   { value: "tahun", label: "Tahun" },
 ];
 
+/**
+ * Pembungkus: membaca filter awal dari URL (mis. tautan dari Rekap atau Dashboard:
+ * #/permit-records?jenis=3&tahun=2026). Filter yang diubah user di dalam halaman TIDAK
+ * ditulis balik ke URL. Pola key-remount (CLAUDE.md §13 Fase 4): tiap URL baru me-mount
+ * ulang bagian dalam dengan state awal yang baru, jadi tidak butuh useEffect.
+ */
 export function PermitRecordsPage() {
+  const [searchParams] = useSearchParams();
+  const initial = useMemo(() => parseListFilters(searchParams), [searchParams]);
+  return <PermitRecordsInner key={searchParams.toString()} initial={initial} />;
+}
+
+function PermitRecordsInner({ initial }: { initial: ListFilters }) {
   const currentUser = useAuthStore((s) => s.currentUser);
 
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput, 300);
 
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [permitTypeFilter, setPermitTypeFilter] = useState<number | "all">("all");
-  const [statusFilter, setStatusFilter] = useState<number | "all">("all");
-  const [tahunFilter, setTahunFilter] = useState("");
-  const [tanggalBerakhirFrom, setTanggalBerakhirFrom] = useState("");
-  const [tanggalBerakhirTo, setTanggalBerakhirTo] = useState("");
+  const [filterOpen, setFilterOpen] = useState(countActiveFilters(initial) > 0);
+  const [permitTypeFilter, setPermitTypeFilter] = useState<number | "all">(initial.permitTypeId);
+  const [statusFilter, setStatusFilter] = useState<number | "all">(initial.statusId);
+  const [tahunFilter, setTahunFilter] = useState(initial.tahun);
+  const [tanggalTerbitFrom, setTanggalTerbitFrom] = useState(initial.terbitFrom);
+  const [tanggalTerbitTo, setTanggalTerbitTo] = useState(initial.terbitTo);
+  const [tanggalBerakhirFrom, setTanggalBerakhirFrom] = useState(initial.berakhirFrom);
+  const [tanggalBerakhirTo, setTanggalBerakhirTo] = useState(initial.berakhirTo);
 
   const [sortBy, setSortBy] = useState<PermitRecordSortBy>("created_at");
   const [sortDir, setSortDir] = useState<SortDirection>(getDefaultSortDirection("created_at"));
@@ -72,6 +87,8 @@ export function PermitRecordsPage() {
     tahun: tahunFilter ? Number(tahunFilter) : undefined,
     tanggalBerakhirFrom: tanggalBerakhirFrom || undefined,
     tanggalBerakhirTo: tanggalBerakhirTo || undefined,
+    tanggalTerbitFrom: tanggalTerbitFrom || undefined,
+    tanggalTerbitTo: tanggalTerbitTo || undefined,
     sortBy,
     sortDir,
     page,
@@ -91,6 +108,8 @@ export function PermitRecordsPage() {
     permitTypeFilter !== "all",
     statusFilter !== "all",
     tahunFilter !== "",
+    tanggalTerbitFrom !== "",
+    tanggalTerbitTo !== "",
     tanggalBerakhirFrom !== "",
     tanggalBerakhirTo !== "",
   ].filter(Boolean).length;
@@ -110,6 +129,8 @@ export function PermitRecordsPage() {
     setPermitTypeFilter("all");
     setStatusFilter("all");
     setTahunFilter("");
+    setTanggalTerbitFrom("");
+    setTanggalTerbitTo("");
     setTanggalBerakhirFrom("");
     setTanggalBerakhirTo("");
     setPage(1);
@@ -230,6 +251,38 @@ export function PermitRecordsPage() {
                 value={tahunFilter}
                 onChange={(e) => {
                   setTahunFilter(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="filterTerbitFrom" className="field-label">
+                Terbit Dari
+              </label>
+              <input
+                id="filterTerbitFrom"
+                type="date"
+                className="field-input w-full"
+                value={tanggalTerbitFrom}
+                onChange={(e) => {
+                  setTanggalTerbitFrom(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="filterTerbitTo" className="field-label">
+                Terbit Sampai
+              </label>
+              <input
+                id="filterTerbitTo"
+                type="date"
+                className="field-input w-full"
+                value={tanggalTerbitTo}
+                onChange={(e) => {
+                  setTanggalTerbitTo(e.target.value);
                   setPage(1);
                 }}
               />

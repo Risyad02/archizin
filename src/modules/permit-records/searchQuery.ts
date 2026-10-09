@@ -14,6 +14,8 @@ export interface PermitRecordQuery {
   tahun?: number;
   tanggalBerakhirFrom?: string; // YYYY-MM-DD
   tanggalBerakhirTo?: string;
+  tanggalTerbitFrom?: string; // YYYY-MM-DD
+  tanggalTerbitTo?: string;
   sortBy?: PermitRecordSortBy;
   sortDir?: SortDirection;
   page?: number; // 1-based
@@ -100,6 +102,15 @@ export function buildPermitRecordWhere(query: PermitRecordQuery): BuiltWhere {
   if (query.tanggalBerakhirTo) {
     params.push(query.tanggalBerakhirTo);
     conditions.push(`pr.tanggal_berakhir <= $${params.length}`);
+  }
+  // Izin tanpa tanggal terbit (NULL) tidak lolos filter rentang terbit: NULL >= x bernilai NULL.
+  if (query.tanggalTerbitFrom) {
+    params.push(query.tanggalTerbitFrom);
+    conditions.push(`pr.tanggal_terbit >= $${params.length}`);
+  }
+  if (query.tanggalTerbitTo) {
+    params.push(query.tanggalTerbitTo);
+    conditions.push(`pr.tanggal_terbit <= $${params.length}`);
   }
 
   return { whereSql: `WHERE ${conditions.join(" AND ")}`, params };
