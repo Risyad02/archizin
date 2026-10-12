@@ -16,6 +16,7 @@ import { getStorageSettings } from "./modules/storage-settings/service"; // gant
 import { grantStorageScope } from "./lib/filesystem";import { SetupStoragePage } from "./modules/storage-settings/pages/SetupStoragePage";
 import { AuditLogPage } from "./modules/audit-log/pages/AuditLogPage";
 import { DashboardPage } from "./modules/dashboard/pages/DashboardPage";
+import { RekapPage } from "./modules/rekap/pages/rekapPage";
 
 type BootState = "needs-admin" | "needs-storage" | "ready";
 
@@ -63,6 +64,7 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout /> } >
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/rekap" element={<RekapPage />} />
             <Route element={<PermissionRoute action="audit:view" />}>
               <Route path="/audit-log" element={<AuditLogPage />} />
             </Route>
