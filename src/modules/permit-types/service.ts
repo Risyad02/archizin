@@ -20,6 +20,15 @@ export async function getActivePermitTypes(): Promise<PermitType[]> {
   return repo.listPermitTypes(false);
 }
 
+/**
+ * Semua jenis izin, termasuk yang nonaktif. Untuk filter daftar izin: izin lama masih
+ * bisa tersimpan di jenis yang sudah dinonaktifkan, dan tautan dari Rekap menuju ke sana.
+ * Hanya membaca, jadi tanpa assertCan (sama seperti getActivePermitTypes).
+ */
+export async function getAllPermitTypes(): Promise<PermitType[]> {
+  return repo.listPermitTypes(true);
+}
+
 export async function createPermitType(
   params: { code: string; name: string; description: string },
   actor: AuthUser

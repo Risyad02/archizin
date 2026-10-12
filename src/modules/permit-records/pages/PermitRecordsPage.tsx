@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { getPermitRecordsPage, deletePermitRecord } from "../service";
-import { getActivePermitTypes } from "../../permit-types/service";
+import { getAllPermitTypes } from "../../permit-types/service";
 import { getStatusOptions } from "../../permit-status/service";
 import { getActiveStatusRules } from "../../permit-status/service";
 import { computeExpiryBadge } from "../../permit-status/expiry";
@@ -52,7 +52,8 @@ function PermitRecordsInner({ initial }: { initial: ListFilters }) {
 
   const [filterOpen, setFilterOpen] = useState(countActiveFilters(initial) > 0);
   const [permitTypeFilter, setPermitTypeFilter] = useState<number | "all">(initial.permitTypeId);
-  const [statusFilter, setStatusFilter] = useState<number | "all">(initial.statusId);
+  const [statusFilter, setStatusFilter] = useState<number | "all" | "none">(initial.statusId);
+  const [noDateFilter, setNoDateFilter] = useState<ListFilters["noDate"]>(initial.noDate);
   const [tahunFilter, setTahunFilter] = useState(initial.tahun);
   const [tanggalTerbitFrom, setTanggalTerbitFrom] = useState(initial.terbitFrom);
   const [tanggalTerbitTo, setTanggalTerbitTo] = useState(initial.terbitTo);
@@ -66,8 +67,8 @@ function PermitRecordsInner({ initial }: { initial: ListFilters }) {
   const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT);
 
   const { data: permitTypes = [] } = useQuery({
-    queryKey: ["permit-types", "active"],
-    queryFn: getActivePermitTypes,
+    queryKey: ["permit-types", "all"],
+    queryFn: getAllPermitTypes,
   });
 
   const { data: statuses = [] } = useQuery({
@@ -83,7 +84,9 @@ function PermitRecordsInner({ initial }: { initial: ListFilters }) {
   const query: PermitRecordQuery = {
     search: search || undefined,
     permitTypeId: permitTypeFilter === "all" ? undefined : permitTypeFilter,
-    statusId: statusFilter === "all" ? undefined : statusFilter,
+    statusId: typeof statusFilter === "number" ? statusFilter : undefined,
+    tanpaStatus: statusFilter === "none" ? true : undefined,
+    tanpaTanggal: noDateFilter || undefined,
     tahun: tahunFilter ? Number(tahunFilter) : undefined,
     tanggalBerakhirFrom: tanggalBerakhirFrom || undefined,
     tanggalBerakhirTo: tanggalBerakhirTo || undefined,
@@ -107,6 +110,7 @@ function PermitRecordsInner({ initial }: { initial: ListFilters }) {
   const activeFilterCount = [
     permitTypeFilter !== "all",
     statusFilter !== "all",
+    noDateFilter !== "",
     tahunFilter !== "",
     tanggalTerbitFrom !== "",
     tanggalTerbitTo !== "",
@@ -128,6 +132,7 @@ function PermitRecordsInner({ initial }: { initial: ListFilters }) {
   function resetFilters() {
     setPermitTypeFilter("all");
     setStatusFilter("all");
+    setNoDateFilter("");
     setTahunFilter("");
     setTanggalTerbitFrom("");
     setTanggalTerbitTo("");
@@ -209,11 +214,14 @@ function PermitRecordsInner({ initial }: { initial: ListFilters }) {
                 }}
               >
                 <option value="all">Semua Jenis Izin</option>
-                {permitTypes.map((pt) => (
-                  <option key={pt.id} value={pt.id}>
-                    {pt.name}
-                  </option>
-                ))}
+                {/* Jenis izin nonaktif hanya ditampilkan bila sedang dipilih (mis. dari tautan rekap). */}
+                {permitTypes
+                  .filter((pt) => pt.is_active || pt.id === permitTypeFilter)
+                  .map((pt) => (
+                    <option key={pt.id} value={pt.id}>
+                      {pt.is_active ? pt.name : `${pt.name} (nonaktif)`}
+                    </option>
+                  ))}
               </select>
             </div>
 
@@ -226,11 +234,13 @@ function PermitRecordsInner({ initial }: { initial: ListFilters }) {
                 className="field-input w-full"
                 value={statusFilter}
                 onChange={(e) => {
-                  setStatusFilter(e.target.value === "all" ? "all" : Number(e.target.value));
+                  const value = e.target.value;
+                  setStatusFilter(value === "all" || value === "none" ? value : Number(value));
                   setPage(1);
                 }}
               >
                 <option value="all">Semua Status</option>
+                <option value="none">Tanpa status</option>
                 {statuses.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.label}
@@ -318,6 +328,26 @@ function PermitRecordsInner({ initial }: { initial: ListFilters }) {
                   setPage(1);
                 }}
               />
+            </div>
+
+            <div>
+              <label htmlFor="filterNoDate" className="field-label">
+                Kelengkapan Tanggal
+              </label>
+              <select
+                id="filterNoDate"
+                className="field-input w-full"
+                value={noDateFilter}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setNoDateFilter(value === "terbit" || value === "berakhir" ? value : "");
+                  setPage(1);
+                }}
+              >
+                <option value="">Semua</option>
+                <option value="terbit">Tanpa tanggal terbit</option>
+                <option value="berakhir">Tanpa tanggal berakhir</option>
+              </select>
             </div>
           </div>
 

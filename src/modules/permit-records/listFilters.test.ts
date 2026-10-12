@@ -58,6 +58,7 @@ describe("parseListFilters", () => {
       terbitTo: "2026-03-31",
       berakhirFrom: "2027-01-01",
       berakhirTo: "2027-12-31",
+      noDate: "",
     });
   });
 
@@ -83,6 +84,22 @@ describe("parseListFilters", () => {
   });
 });
 
+describe("parseListFilters: status 'none' dan tanpa tanggal", () => {
+  it("status=none berarti izin tanpa status", () => {
+    expect(parse("status=none").statusId).toBe("none");
+    expect(parse("status=5").statusId).toBe(5);
+    expect(parse("status=NONE").statusId).toBe("all");
+    expect(parse("status=nol").statusId).toBe("all");
+  });
+
+  it("tanpaTanggal hanya menerima terbit atau berakhir", () => {
+    expect(parse("tanpaTanggal=terbit").noDate).toBe("terbit");
+    expect(parse("tanpaTanggal=berakhir").noDate).toBe("berakhir");
+    expect(parse("tanpaTanggal=semua").noDate).toBe("");
+    expect(parse("tanpaTanggal=").noDate).toBe("");
+  });
+});
+
 describe("countActiveFilters", () => {
   it("menghitung hanya filter yang terisi", () => {
     expect(countActiveFilters(EMPTY_LIST_FILTERS)).toBe(0);
@@ -90,6 +107,7 @@ describe("countActiveFilters", () => {
       countActiveFilters({ ...EMPTY_LIST_FILTERS, permitTypeId: 3, terbitFrom: "2026-01-01" })
     ).toBe(2);
     expect(countActiveFilters(parse(SEMUA_PARAMETER))).toBe(7);
+    expect(countActiveFilters({ ...EMPTY_LIST_FILTERS, statusId: "none", noDate: "terbit" })).toBe(2);
   });
 });
 
@@ -113,6 +131,14 @@ describe("buildListUrl", () => {
     );
   });
 
+  it("status 'none' dan tanpaTanggal ditulis, nilai liar tidak", () => {
+    expect(buildListUrl({ statusId: "none", noDate: "berakhir" })).toBe(
+      "/permit-records?status=none&tanpaTanggal=berakhir"
+    );
+    expect(buildListUrl({ statusId: "all", noDate: "" })).toBe(LIST_PATH);
+    expect(buildListUrl({ noDate: "x" as never })).toBe(LIST_PATH);
+  });
+
   it("nilai tidak valid tidak ikut ditulis, dan hasilnya bisa dibaca balik (round trip)", () => {
     expect(
       buildListUrl({ permitTypeId: 0, statusId: -2, tahun: "26", terbitFrom: "2026-02-30" })
@@ -126,6 +152,7 @@ describe("buildListUrl", () => {
       terbitTo: "2026-03-31",
       berakhirFrom: "2027-01-01",
       berakhirTo: "2027-12-31",
+      noDate: "" as const,
     };
     const query = buildListUrl(filters).split("?")[1] ?? "";
     expect(parse(query)).toEqual(filters);

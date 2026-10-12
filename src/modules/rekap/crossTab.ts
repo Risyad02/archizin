@@ -106,9 +106,9 @@ export type RekapGrouping = "permitType" | "status" | "total";
 
 /** Filter kelompok (jenis izin / status) untuk satu baris; kosong untuk mode total. */
 export function groupFilters(grouping: RekapGrouping, groupId: number | null): Partial<ListFilters> {
+  if (grouping === "status") return { statusId: groupId === null ? "none" : groupId };
   if (groupId === null) return {};
   if (grouping === "permitType") return { permitTypeId: groupId };
-  if (grouping === "status") return { statusId: groupId };
   return {};
 }
 

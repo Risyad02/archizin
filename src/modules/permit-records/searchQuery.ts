@@ -16,6 +16,10 @@ export interface PermitRecordQuery {
   tanggalBerakhirTo?: string;
   tanggalTerbitFrom?: string; // YYYY-MM-DD
   tanggalTerbitTo?: string;
+  /** Hanya izin yang belum punya status (status_id NULL). */
+  tanpaStatus?: boolean;
+  /** Hanya izin yang tanggal terbit / berakhirnya kosong (NULL atau teks kosong). */
+  tanpaTanggal?: "terbit" | "berakhir";
   sortBy?: PermitRecordSortBy;
   sortDir?: SortDirection;
   page?: number; // 1-based
@@ -111,6 +115,16 @@ export function buildPermitRecordWhere(query: PermitRecordQuery): BuiltWhere {
   if (query.tanggalTerbitTo) {
     params.push(query.tanggalTerbitTo);
     conditions.push(`pr.tanggal_terbit <= $${params.length}`);
+  }
+  if (query.tanpaStatus) {
+    conditions.push("pr.status_id IS NULL");
+  }
+  // Definisi "kosong" sama dengan rekap (NULLIF(kolom, '') IS NULL), supaya angka rekap = isi daftar.
+  if (query.tanpaTanggal === "terbit") {
+    conditions.push("(pr.tanggal_terbit IS NULL OR pr.tanggal_terbit = '')");
+  }
+  if (query.tanpaTanggal === "berakhir") {
+    conditions.push("(pr.tanggal_berakhir IS NULL OR pr.tanggal_berakhir = '')");
   }
 
   return { whereSql: `WHERE ${conditions.join(" AND ")}`, params };

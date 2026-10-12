@@ -10,9 +10,13 @@
  * masuk ke query sebagai parameter ($n) lewat buildPermitRecordWhere.
  */
 
+/** Tanggal mana yang harus kosong pada filter "tanpa tanggal". */
+export type NoDateField = "terbit" | "berakhir";
+
 export interface ListFilters {
   permitTypeId: number | "all";
-  statusId: number | "all";
+  /** "none" = hanya izin yang belum punya status. */
+  statusId: number | "all" | "none";
   /** 4 digit, atau "" bila kosong. */
   tahun: string;
   /** Tanggal YYYY-MM-DD, atau "" bila kosong. */
@@ -20,6 +24,8 @@ export interface ListFilters {
   terbitTo: string;
   berakhirFrom: string;
   berakhirTo: string;
+  /** Hanya izin yang tanggal terbit / tanggal berakhirnya kosong; "" = tidak dipakai. */
+  noDate: NoDateField | "";
 }
 
 export const EMPTY_LIST_FILTERS: ListFilters = {
@@ -30,6 +36,7 @@ export const EMPTY_LIST_FILTERS: ListFilters = {
   terbitTo: "",
   berakhirFrom: "",
   berakhirTo: "",
+  noDate: "",
 };
 
 export const LIST_PATH = "/permit-records";
@@ -43,6 +50,7 @@ const PARAM = {
   terbitTo: "terbitSampai",
   berakhirFrom: "berakhirDari",
   berakhirTo: "berakhirSampai",
+  noDate: "tanpaTanggal",
 } as const;
 
 /** Bilangan bulat positif tanpa nol di depan, maksimal 9 digit. */
@@ -73,6 +81,10 @@ function idFromParam(value: string | null): number | "all" {
   return value !== null && ID_PATTERN.test(value) ? Number(value) : "all";
 }
 
+function statusFromParam(value: string | null): number | "all" | "none" {
+  return value === "none" ? "none" : idFromParam(value);
+}
+
 function tahunFromParam(value: string | null): string {
   return value !== null && TAHUN_PATTERN.test(value) ? value : "";
 }
@@ -81,16 +93,21 @@ function dateFromParam(value: string | null): string {
   return value !== null && isValidISODate(value) ? value : "";
 }
 
+function noDateFromParam(value: string | null): NoDateField | "" {
+  return value === "terbit" || value === "berakhir" ? value : "";
+}
+
 /** Membaca filter dari URL. Parameter tak dikenal diabaikan; parameter ganda memakai yang pertama. */
 export function parseListFilters(params: URLSearchParams): ListFilters {
   return {
     permitTypeId: idFromParam(params.get(PARAM.permitTypeId)),
-    statusId: idFromParam(params.get(PARAM.statusId)),
+    statusId: statusFromParam(params.get(PARAM.statusId)),
     tahun: tahunFromParam(params.get(PARAM.tahun)),
     terbitFrom: dateFromParam(params.get(PARAM.terbitFrom)),
     terbitTo: dateFromParam(params.get(PARAM.terbitTo)),
     berakhirFrom: dateFromParam(params.get(PARAM.berakhirFrom)),
     berakhirTo: dateFromParam(params.get(PARAM.berakhirTo)),
+    noDate: noDateFromParam(params.get(PARAM.noDate)),
   };
 }
 
@@ -104,6 +121,7 @@ export function countActiveFilters(filters: ListFilters): number {
     filters.terbitTo !== "",
     filters.berakhirFrom !== "",
     filters.berakhirTo !== "",
+    filters.noDate !== "",
   ].filter(Boolean).length;
 }
 
@@ -120,20 +138,28 @@ export function buildListUrl(filters: Partial<ListFilters>): string {
       params.set(key, String(value));
     }
   };
+  const setStatus = (key: string, value: number | "all" | "none" | undefined) => {
+    if (value === "none") params.set(key, "none");
+    else setId(key, value);
+  };
   const setTahun = (key: string, value: string | undefined) => {
     if (value !== undefined && TAHUN_PATTERN.test(value)) params.set(key, value);
   };
   const setDate = (key: string, value: string | undefined) => {
     if (value !== undefined && isValidISODate(value)) params.set(key, value);
   };
+  const setNoDate = (key: string, value: NoDateField | "" | undefined) => {
+    if (value === "terbit" || value === "berakhir") params.set(key, value);
+  };
 
   setId(PARAM.permitTypeId, filters.permitTypeId);
-  setId(PARAM.statusId, filters.statusId);
+  setStatus(PARAM.statusId, filters.statusId);
   setTahun(PARAM.tahun, filters.tahun);
   setDate(PARAM.terbitFrom, filters.terbitFrom);
   setDate(PARAM.terbitTo, filters.terbitTo);
   setDate(PARAM.berakhirFrom, filters.berakhirFrom);
   setDate(PARAM.berakhirTo, filters.berakhirTo);
+  setNoDate(PARAM.noDate, filters.noDate);
 
   const query = params.toString();
   return query ? `${LIST_PATH}?${query}` : LIST_PATH;

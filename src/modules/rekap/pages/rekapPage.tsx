@@ -12,6 +12,7 @@ import {
 import type { RekapGrouping } from "../crossTab";
 import { Segmented, type SegmentedOption } from "../components/segmented";
 import { RekapTableView } from "../components/rekapTableView";
+import { rekapCellHref, type RekapCellTarget } from "../cellLinks";
 
 const numberFormat = new Intl.NumberFormat("id-ID");
 
@@ -67,6 +68,7 @@ export function RekapPage() {
   };
 
   const basisLabel = BASIS_LABELS[basis];
+  const hrefFor = (target: RekapCellTarget) => rekapCellHref({ grouping, basis, year }, target);
 
   let result;
   if (!yearValid) {
@@ -108,6 +110,7 @@ export function RekapPage() {
         <RekapTableView
           table={table}
           groupHeading={GROUP_HEADINGS[grouping]}
+          hrefFor={hrefFor}
           caption={`Rekapitulasi izin ${PERIOD_KIND_LABELS[kind].toLowerCase()} berdasarkan ${basisLabel}, tahun ${year}`}
         />
       </div>
@@ -119,7 +122,7 @@ export function RekapPage() {
       <header>
         <h1 className="text-xl font-semibold">Rekapitulasi</h1>
         <p className="text-sm text-ink-muted">
-          Jumlah izin per periode, dihitung dari {basisLabel}. Semua status ikut dihitung.
+          Jumlah izin per periode, dihitung dari {basisLabel}. Semua status ikut dihitung. Klik angka untuk membuka daftar izinnya.
         </p>
       </header>
 

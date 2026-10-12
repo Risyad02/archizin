@@ -117,6 +117,35 @@ describe("buildPermitRecordWhere", () => {
     );
     expect(params).toEqual(["2026-12-31", "2026-01-01"]);
   });
+
+  it("tanpaStatus memakai status_id IS NULL tanpa parameter", () => {
+    const { whereSql, params } = buildPermitRecordWhere({ tanpaStatus: true });
+    expect(whereSql).toBe("WHERE pr.deleted_at IS NULL AND pr.status_id IS NULL");
+    expect(params).toEqual([]);
+    expect(buildPermitRecordWhere({ tanpaStatus: false }).whereSql).toBe("WHERE pr.deleted_at IS NULL");
+  });
+
+  it("tanpaTanggal memeriksa NULL atau teks kosong pada kolom yang dipilih", () => {
+    const terbit = buildPermitRecordWhere({ tanpaTanggal: "terbit" });
+    expect(terbit.whereSql).toBe(
+      "WHERE pr.deleted_at IS NULL AND (pr.tanggal_terbit IS NULL OR pr.tanggal_terbit = '')"
+    );
+    const berakhir = buildPermitRecordWhere({ tanpaTanggal: "berakhir" });
+    expect(berakhir.whereSql).toContain("(pr.tanggal_berakhir IS NULL OR pr.tanggal_berakhir = '')");
+    expect(berakhir.params).toEqual([]);
+  });
+
+  it("filter tanpa parameter tidak menggeser penomoran $n filter lain", () => {
+    const { whereSql, params } = buildPermitRecordWhere({
+      tanpaStatus: true,
+      tanpaTanggal: "terbit",
+      permitTypeId: 3,
+      tanggalBerakhirFrom: "2026-01-01",
+    });
+    expect(whereSql).toContain("pr.permit_type_id = $1");
+    expect(whereSql).toContain("pr.tanggal_berakhir >= $2");
+    expect(params).toEqual([3, "2026-01-01"]);
+  });
 });
 
 describe("buildOrderBy", () => {
