@@ -9,6 +9,7 @@ const navItems: { to: string; label: string; action: Action }[] = [
   { to: "/", label: "Dashboard", action: "record:read" },
   { to: "/jenis-izin", label: "Jenis Perizinan", action: "permit_type:manage" },
   { to: "/permit-records", label: "Data Perizinan", action: "record:read" },
+  { to: "/rekap", label: "Rekapitulasi", action: "record:read" },
   { to: "/audit-log", label: "Log Aktivitas", action: "audit:view" },
 ];
 
