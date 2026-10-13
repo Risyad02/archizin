@@ -3,6 +3,8 @@ import m0001 from "./migrations/0001_init.sql?raw";
 import m0002 from "./migrations/0002_seed_folder_template.sql?raw";
 import m0003 from "./migrations/0003_custom_field_options_soft_delete.sql?raw";
 import m0004 from "./migrations/0004_seed_status_rules.sql?raw";
+import m0005 from "./migrations/0005_document_links_index.sql?raw";
+import m0006 from "./migrations/0006_ensure_document_links_index.sql?raw";
 
 interface MigrationDef {
   version: number;
@@ -15,6 +17,8 @@ const migrations: MigrationDef[] = [
   { version: 2, description: "seed folder template", sql: m0002 },
   { version: 3, description: "custom_field_options soft delete", sql: m0003 },
   { version: 4, description: "seed status_rules H-90/60/30/14/7", sql: m0004 },
+  { version: 5, description: "index document_links.permit_record_id", sql: m0005 },
+  { version: 6, description: "ensure index document_links.permit_record_id", sql: m0006 },
 ];
 
 function stripComments(sql: string): string {
