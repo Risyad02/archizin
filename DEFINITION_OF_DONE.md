@@ -105,7 +105,7 @@ Saat ini hanya level 1 yang ada. Target akhir:
 
 | Level | Isi | Status | Wajib pada |
 |---|---|---|---|
-| Unit | Logika murni, validasi, helper | Ada (199 test, 23 file) | Setiap checkpoint |
+| Unit | Logika murni, validasi, helper | Ada (278 test, 34 file) | Setiap checkpoint |
 | Integrasi | Repository dan service terhadap SQLite sungguhan (file temporary) | **Belum ada** | Sebelum Fase 9 (Import/Export) dan Fase 11 (Backup/Restore) |
 | Komponen | Halaman dan form React dengan Testing Library (sudah terpasang) | **Belum ada** | Untuk form dan alur kritikal, dimulai Fase 6 |
 | Akseptansi | Skrip manual ujung ke ujung berbasis kriteria Level 3 | Belum ada | Sebelum rilis MVP |
@@ -168,7 +168,7 @@ MVP boleh diberikan ke pengguna sungguhan hanya bila **semua** bagian ini lulus.
 
 ### 3.5 Performa dan perangkat spek rendah
 - [ ] Diuji di perangkat dengan spesifikasi paling rendah yang menjadi target pengguna, bukan hanya di laptop pengembangan.
-- [ ] Target waktu dan memori ditetapkan **setelah baseline diukur** di Fase 6 (dengan dataset uji yang realistis, termasuk ribuan data izin dan ribuan dokumen), lalu dicatat di dokumen ini.
+- [ ] Target waktu dan memori ditetapkan **setelah baseline diukur** di Fase 6 (dengan dataset uji yang realistis, termasuk ribuan data izin dan ribuan dokumen), lalu dicatat di dokumen ini. Baseline pertama (Fase 8) ada di §7; target dan perangkat minimum masih menunggu keputusan (utang #25).
 - [ ] Daftar besar tidak membekukan UI (paginasi atau virtualisasi).
 - [ ] Ukuran installer dan penggunaan memori saat idle dicatat.
 
@@ -231,7 +231,7 @@ Sesuai keputusan awal, yang berikut **bukan** bagian dokumen ini dan tidak diker
 
 ## 5. Register utang dan celah saat ini
 
-Kondisi per akhir Fase 7, dibandingkan dengan dokumen ini. Prioritas: **P0** memblokir rilis, **P1** harus lunas sebelum fase yang disebut selesai, **P2** dijadwalkan.
+Kondisi per akhir Fase 8, dibandingkan dengan dokumen ini. Prioritas: **P0** memblokir rilis, **P1** harus lunas sebelum fase yang disebut selesai, **P2** dijadwalkan.
 
 | # | Celah | Sejak | Harus lunas | Prioritas |
 |---|---|---|---|---|
@@ -251,11 +251,12 @@ Kondisi per akhir Fase 7, dibandingkan dengan dokumen ini. Prioritas: **P0** mem
 | ~~17~~ | ~~Status_rules H-90/60/30/14/7 belum dipakai~~ — **LUNAS Fase 6** (Checkpoint 6.7) | Fase 4 | Fase 6 | Lunas |
 | 18 | Belum ada fitur edit custom field definition sama sekali (termasuk mengubah `is_searchable`/label/tipe field yang sudah ada) | Fase 6 | Sebelum rilis MVP bila data produksi butuh koreksi field | P2 |
 | ~~19~~ | ~~`@tanstack/react-table` ter-install tapi tidak pernah dipakai~~ — **LUNAS Fase 7** (keputusan user: dihapus dari dependensi; dipasang lagi bila suatu saat benar-benar dibutuhkan) | Fase 1 | Fase 7 | Lunas |
-| 20 | Query SQL modul `dashboard` (8 query: total, per status, per jenis izin, per tanggal berakhir, per bulan, kesehatan arsip, aktivitas, daftar perhatian) hanya diverifikasi manual dengan data uji dan skrip pembanding; belum ada integration test terhadap SQLite sungguhan (butuh ADR adapter DB, lihat §6 poin 1) | Fase 7 | Sebelum Fase 9 (bersama #12) | P1 |
-| 21 | `PermitRecordsPage` menyimpan filter di state, tidak membaca URL — kartu/daftar dashboard belum bisa menaut ke daftar yang sudah terfilter (checkpoint 7.8 digeser) | Fase 7 | Fase 8 (rekap butuh mekanisme yang sama) | P2 |
+| 20 | Query SQL modul `dashboard` (8 query: total, per status, per jenis izin, per tanggal berakhir, per bulan, kesehatan arsip, aktivitas, daftar perhatian) hanya diverifikasi manual dengan data uji dan skrip pembanding; belum ada integration test terhadap SQLite sungguhan (butuh ADR adapter DB, lihat §6 poin 1). Fase 8 menambah query rekap (`rekapQuery`) dan filter daftar (`searchQuery`) yang teruji sebagai teks SQL tetapi belum dijalankan terhadap SQLite di Vitest; konsistensi angka rekap dengan daftar diverifikasi manual pada 506 sel | Fase 7 | Sebelum Fase 9 (bersama #12) | P1 |
+| ~~21~~ | ~~`PermitRecordsPage` menyimpan filter di state, tidak membaca URL~~ — **LUNAS Fase 8** (8.1 dan 8.5: `listFilters.ts`, filter via URL, angka rekap menaut ke daftar terfilter) | Fase 7 | Fase 8 | Lunas |
 | 22 | `daysUntil` (`lib/dateHelpers.ts`) mem-parse `YYYY-MM-DD` sebagai UTC lalu membandingkannya dengan tengah malam lokal. Aman di UTC+7..+9 dan UTC; di zona negatif bisa menghasilkan `-0` (hari ini = `-0`), di UTC+12/+13 selisihnya lebih satu hari (hasil uji `Pacific/Auckland`: besok = 2). Perbaikan kecil: parse komponen tanggal sebagai tanggal lokal. Tidak berdampak selama target Windows/Indonesia | Fase 4 (ditemukan Fase 7) | Sebelum keputusan cross-platform atau zona di luar Indonesia | P2 |
 | 23 | Kalimat panel Aktivitas Terbaru memakai `ENTITY_LABELS`/`ACTION_VERBS` yang ditulis manual (`dashboard/activity.ts`); entity atau aksi baru (import, backup, restore) tampil apa adanya sampai ditambahkan | Fase 7 | Saat Fase 9/11 menambah aksi audit baru | P2 |
-| 24 | Baseline performa belum tercatat: §3.5 menjadwalkan pengukuran dengan dataset realistis (ribuan izin/dokumen) di Fase 6, dan dashboard Fase 7 menambah 8 query agregasi yang jalan tiap halaman dibuka | Fase 6 | Diukur saat Fase 8 (query rekap berikutnya yang berat), sebelum rilis MVP | P1 |
+| ~~24~~ | ~~Baseline performa belum tercatat~~ — **LUNAS Fase 8** (8.6: diukur dengan 20.020 izin dan 12.857 dokumen; lihat §7). Menemukan dan memperbaiki query Kesehatan Arsip ±18,6 detik (indeks `document_links`, migration 0005/0006) | Fase 6 | Fase 8 | Lunas |
+| 25 | Target performa dan spesifikasi perangkat minimum belum ditetapkan; baseline di §7 hanya diukur di laptop pengembangan dengan 20.020 izin. Belum ada ukuran memori dan ukuran installer | Fase 8 | Sebelum rilis MVP (§3.5, keputusan §6 poin 3) | P1 |
 
 Aturan pemeliharaan register: diperbarui di setiap penutupan fase. Utang yang lewat batas "harus lunas" tanpa dijadwalkan ulang secara tertulis menjadi penghalang penutupan fase berikutnya.
 
@@ -265,7 +266,27 @@ Aturan pemeliharaan register: diperbarui di setiap penutupan fase. Utang yang le
 
 1. **Cara integration test** (adapter DB di Vitest) — perlu ADR sebelum test integrasi pertama.
 2. **Perilaku session** (persisten atau tidak) — perlu keputusan sebelum rilis.
-3. **Target performa dan spesifikasi perangkat minimum** — ditetapkan setelah baseline diukur; perlu pengguna menyebutkan perangkat terendah yang harus didukung.
+3. **Target performa dan spesifikasi perangkat minimum** — baseline sudah ada (§7); yang belum: perangkat terendah yang harus didukung, diisi pengguna, lalu target ditetapkan.
 4. **Matriks role × aksi** — perlu ditulis sebelum pengecekan role di service dikerjakan (#1 register).
 5. **Format dan lokasi system log** — perlu diputuskan sebelum #4 register.
 6. **Kuota kualitas per fase (2.9)** — apakah ketiganya (Q-UI, Q-TEST, Q-DEBT) wajib di setiap fase, atau hanya Q-TEST dan Q-DEBT?
+
+---
+
+## 7. Baseline performa (Fase 8, 2026-10-13)
+
+Data uji: 20.020 izin (20.000 dari `seed_performa.sql` + data asli) dan ±12.857 dokumen. Diukur di aplikasi Tauri sungguhan pada laptop pengembangan (bukan perangkat spesifikasi rendah), waktu dibaca dari tab Network DevTools saat membuka Dashboard setelah login ADMIN.
+
+| Ukuran | Sebelum indeks | Sesudah indeks (migration 0005/0006) |
+|---|---|---|
+| Query Kesehatan Arsip (`plugin:sql\|select`) | 18.640 ms | ±110 ms |
+| `select` terlama saat Dashboard dibuka | 18.640 ms | 211 ms |
+| `select` lainnya | 1–141 ms | 3–141 ms |
+| `plugin:sql\|load` (buka database) | 19.830 ms (sekali; diduga kunci dari alat SQLite eksternal, penyebab tidak dipastikan) | 4 ms |
+| `verify_password` (login, argon2) | 529 ms | 594–718 ms (disengaja lambat, tidak perlu diubah) |
+
+Catatan:
+- Query rekap (R1–R6, tahun 2025) dan daftar izin (L1–L6) diukur di SQLite sandbox dengan set indeks yang sama dengan database pengguna: 8–14 ms per query. Itu bukan pengukuran di aplikasi dan tidak termasuk waktu IPC Tauri.
+- Penyebab angka 18,6 detik: lihat `CHANGELOG.md` (Fixed, Fase 8) dan `CLAUDE.md` §13 Fase 8.
+- Batas yang dipakai sementara (belum disepakati): Dashboard terbuka di bawah ±1 detik pada 20.000 izin. Target resmi menunggu utang #25.
+- Skrip data uji ada di luar repo (`seed_performa.sql`, `hapus_performa.sql`, `ukur_performa.sql`, `cek_index.sql`, `diagnosa_indeks.sql`).

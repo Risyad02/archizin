@@ -31,6 +31,10 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/), dengan kategor
 - `permit-status/expiry.ts`: `STATUS_CODES_EXCLUDED_FROM_EXPIRY` dan `isExpiryTracked` — satu daftar status (Dicabut, Tidak Aktif) yang dikecualikan dari hitungan dan indikator masa berlaku, dipakai dashboard dan daftar izin
 - `getRecentActivity(actor)` di service dashboard, dijaga `audit:view`
 - `lib/dateHelpers.test.ts` (Q-TEST Fase 7): test pertama untuk `deriveTahunBulan`/`daysUntil`
+- **Fase 8 (Rekapitulasi) selesai**: modul `src/modules/rekap/` (types/repository/service) dengan fungsi murni bertest — `periods.ts` (periode bulanan/triwulanan/semester/tahunan), `crossTab.ts` (tabel silang), `rekapQuery.ts` (pembangun SQL), `periodLabels.ts`, `cellLinks.ts`. Halaman `RekapPage` (rute `/rekap`, menu Rekapitulasi) dengan pemilih tahun, tab periode, dasar tanggal (terbit/berakhir), pengelompokan (jenis izin/status/total), komponen `Segmented` dan `RekapTableView`; angka rekap menjadi tautan ke daftar izin terfilter
+- `permit-records/listFilters.ts`: filter daftar izin dibaca dan ditulis ke URL (`parseListFilters`, `buildListUrl`, `countActiveFilters`); filter baru rentang tanggal terbit, "Tanpa status", "Kelengkapan Tanggal" (tanpa tanggal terbit/berakhir). `getAllPermitTypes()` di service `permit-types` (termasuk jenis nonaktif) untuk filter
+- Migration `0005` dan `0006`: indeks `idx_document_links_permit_record` pada `document_links(permit_record_id)`
+- Q-TEST Fase 8: `audit-log/service.roles.test.ts` (5), `audit-log/repository.test.ts` (4), `database/migrate.test.ts` (7)
 
 ### Changed
 - `AppLayout.tsx`: `navItems` ditambah `{ to: "/permit-records", label: "Data Perizinan" }` — sebelumnya routing Fase 4 sudah terpasang di `App.tsx` tapi tidak ada tombol/menu navigasi yang mengarah ke sana.
@@ -44,6 +48,9 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/), dengan kategor
 - `AppLayout.tsx`: `navItems` difilter berdasarkan role (`can()`); tombol Keluar memanggil `logout()` (tercatat ke audit log)
 - `App.tsx`: rute `/` kini menampilkan `DashboardPage` (placeholder dihapus)
 - `computeExpiryBadge` menerima argumen ketiga opsional `statusCode` dan mengembalikan `null` untuk status yang dikecualikan (kompatibel mundur: tanpa argumen perilakunya sama seperti sebelumnya); `PermitRecordsPage` dan halaman detail meneruskan `status_code`
+- `PermitRecordsPage` dipecah menjadi pembungkus luar (membaca `useSearchParams`) dan `PermitRecordsInner` (menerima filter awal, `key` dari parameter URL); `searchQuery.ts` menerima `tanggalTerbitFrom/To`, `tanpaStatus`, `tanpaTanggal`
+- `App.tsx` dan `AppLayout.tsx`: rute `/rekap` dan menu Rekapitulasi
+- `database/migrate.ts`: daftar migration bertambah versi 5 dan 6
 
 ### Fixed
 Beberapa isu ditemukan & diperbaiki selama setup Fase 1 — dicatat di sini supaya tidak terulang di fase berikutnya:
@@ -85,6 +92,11 @@ Beberapa isu ditemukan & diperbaiki selama setup Fase 1 — dicatat di sini supa
 - **TS1261 "differs only in casing" setelah nama berkas diganti manual (Fase 7)**: nama berkas di disk berbeda huruf dari baris `import` (`Dayslabel`/`daysLabel`, `Expiryquery`/`expiryQuery`, `expirywindow`/`expiryWindow`). Windows tidak membedakan huruf besar-kecil sehingga `vitest` tetap hijau, tetapi `tsc` menolak. Diperbaiki dengan menyamakan enam baris `import` dengan nama berkas; di Linux/CI hal ini akan gagal total.
 - **`parseSqliteUtc` meloloskan tanggal tidak sah (Fase 7)**: `Date.UTC` menormalkan nilai di luar rentang tanpa error, jadi `2026-13-45 99:99:99` dibaca sebagai tanggal sah di tahun berikutnya. Diperbaiki dengan mencocokkan ulang tiap komponen setelah konstruksi. Tertangkap oleh test sebelum dipakai.
 - **Label sebaran terpotong di Dashboard (Fase 7)**: kolom label terlalu sempit dengan `truncate` (nama jenis izin panjang jadi "…"). Diganti `line-clamp-2` dan kolom lebih lebar.
+- **Query Kesehatan Arsip dashboard ±18,6 detik pada 20.020 izin (Fase 8)**: akar masalah — subquery berkorelasi `NOT EXISTS (SELECT 1 FROM document_links dl WHERE dl.permit_record_id = pr.id)` dijalankan untuk setiap izin, sedangkan `document_links.permit_record_id` tidak punya indeks (SQLite tidak membuat indeks otomatis untuk kolom foreign key), jadi tiap izin memindai seluruh tabel dokumen (O(izin × dokumen)). Diperbaiki dengan indeks (migration 0005/0006): ±110 ms. Terukur di aplikasi sungguhan lewat tab Network DevTools
+- **Migration 0005 tercatat berjalan (`user_version` = 5) tetapi indeks tidak terbentuk (Fase 8)**: berkas `0005_document_links_index.sql` di komputer user ternyata kosong atau hanya berisi komentar. Runner membuang komentar, mendapat nol pernyataan, lalu tetap menaikkan versi. Perbaikan: migration `0006` dengan pernyataan yang sama (`IF NOT EXISTS`) — migration yang sudah tercatat tidak disunting karena tidak akan dijalankan ulang. Ditambah test yang menolak migration tanpa pernyataan
+- **Klik menu Rekapitulasi mengembalikan ke Dashboard (Fase 8)**: rute `/rekap` belum didaftarkan di `App.tsx`, sehingga rute catch-all `*` mengalihkan ke `/`. Diperbaiki dengan mendaftarkan rute
+- **Test salah tipe di `listFilters.test.ts` (Fase 8)**: `noDate: ""` di-infer sebagai `string`, bukan union `NoDateField | ""`. Diperbaiki dengan `"" as const`. Tertangkap `tsc` (`noUncheckedIndexedAccess` dan strict), bukan Vitest
+- **`tsc` menolak akses indeks array di `crossTab.ts` (Fase 8)**: `noUncheckedIndexedAccess` membuat `cells[index]` bertipe `number | undefined`. Diperbaiki dengan `?? 0`
 
 ### Removed
 - File nyasar `src-tauri/2` (lihat Fixed)

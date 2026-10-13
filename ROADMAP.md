@@ -2,7 +2,7 @@
 
 Sumber: `05_IMPLEMENTATION_PLAN.md`. Dokumen ini yang dijaga up-to-date (centang checklist) seiring progres; `05_IMPLEMENTATION_PLAN.md` tetap sebagai arsip proposal awal.
 
-Status keseluruhan: **Fase 7 (Dashboard) selesai — Fase 8 (Rekapitulasi) berikutnya**
+Status keseluruhan: **Fase 8 (Rekapitulasi) selesai — Fase 9 (Import/Export) berikutnya**
 Kriteria "selesai" untuk setiap checkpoint, fase, dan rilis MVP ada di `DEFINITION_OF_DONE.md`. Sebuah item hanya boleh dicentang bila kriteria di sana terpenuhi.
 
 ## PHASE 0 — Discovery & Architecture ✅ Selesai
@@ -83,11 +83,26 @@ Kriteria "selesai" untuk setiap checkpoint, fase, dan rilis MVP ada di `DEFINITI
 - [x] 7.6 Panel **Kesehatan Arsip** (dokumen file tidak ditemukan, izin tanpa folder, izin tanpa dokumen, dokumen belum dicek) + **Aktivitas Terbaru** (`getRecentActivity`, dijaga `audit:view` di service; UI hanya menyembunyikan panel)
 - [x] 7.7a Q-TEST: `lib/dateHelpers.ts` (modul lama tanpa test) kini bertest (`dateHelpers.test.ts`)
 - [x] 7.7 Penutupan: ROADMAP/CHANGELOG/CLAUDE.md/DEFINITION_OF_DONE.md diperbarui, `@tanstack/react-table` dihapus dari dependensi (keputusan user), data uji dashboard dibersihkan
-- [ ] 7.8 `PermitRecordsPage` membaca filter awal dari URL supaya kartu/daftar dashboard bisa mengarah ke daftar terfilter — **DIGESER ke Fase 8** (rekap butuh mekanisme yang sama, lebih hemat dikerjakan sekali); dicatat sebagai utang #21
+- [x] 7.8 `PermitRecordsPage` membaca filter awal dari URL supaya kartu/daftar dashboard bisa mengarah ke daftar terfilter — digeser ke Fase 8 (rekap butuh mekanisme yang sama) dan **selesai di Fase 8 (8.1 dan 8.5)**; utang #21 lunas
 - ⚠️ Utang baru dari Fase 7 (detail di `DEFINITION_OF_DONE.md` §5): #20 query SQL dashboard belum punya integration test; #21 filter via URL; #22 `daysUntil` bergantung zona waktu (aman di UTC+7..+9, dicatat karena ditemukan saat menulis test); #23 label aktivitas ditulis manual; #24 baseline performa belum diukur
 
-## PHASE 8 — Recapitulation P1
-- [ ] Rekap bulanan/triwulanan/semester/tahunan + filter
+## PHASE 8 — Recapitulation P1 ✅ Selesai
+- [x] 8.1 Daftar izin membaca filter dari URL (`listFilters.ts`: `parseListFilters`, `buildListUrl`, `countActiveFilters`; pola key-remount di `PermitRecordsPage`); parameter tidak sah diabaikan — utang #21 lunas
+- [x] 8.2 Fungsi murni rekap: `periods.ts` (bulanan/triwulanan/semester/tahunan, dasar tanggal terbit/berakhir) dan `crossTab.ts` (tabel silang periode × kelompok) + test
+- [x] 8.3 Query, repository, dan service rekap (`rekapQuery.ts`, `listRekapRows`, `getRekap`); SQL dibuat sebagai fungsi murni supaya bisa dites
+- [x] 8.4 Halaman **Rekapitulasi** (menu, rute `/rekap`): pemilih tahun, tab periode, dasar tanggal, pengelompokan (jenis izin / status / total), empat keadaan halaman
+- [x] 8.5 Angka rekap menjadi tautan ke daftar izin yang sudah terfilter; filter daftar bertambah: rentang tanggal terbit, "Tanpa status", "Kelengkapan Tanggal" (tanpa tanggal terbit/berakhir). Angka sel rekap = jumlah di daftar (diverifikasi pada 506 sel)
+- [x] 8.6 Baseline performa dengan 20.020 izin dan 12.857 dokumen (utang #24 lunas): ditemukan query Kesehatan Arsip ±18,6 detik karena `document_links.permit_record_id` tanpa indeks; migration `0005` dan `0006` (lihat CHANGELOG), hasil ±110 ms. Tabel baseline ada di `DEFINITION_OF_DONE.md` §7
+- [x] 8.6b Q-TEST: modul lama `audit-log` (service roles dan repository) dan runner migration (`database/migrate.ts`) kini bertest
+- [x] 8.7 Penutupan: ROADMAP/CHANGELOG/CLAUDE.md/DEFINITION_OF_DONE.md diperbarui
+- ⚠️ Utang baru dari Fase 8 (detail di `DEFINITION_OF_DONE.md` §5): #25 target performa dan perangkat minimum belum ditetapkan (baseline hanya di laptop pengembangan); #20 diperluas ke query rekap
+
+### Kandidat setelah Fase 8 (belum dijadwalkan, belum disetujui sebagai fase)
+Permintaan user (2026-10-12): menu Rekap juga menampung file rekap manual (Excel/PDF/lainnya). Ide yang dicatat:
+- **Arsip Rekap Manual**: unggah dan simpan file rekap buatan manual, dengan judul, periode, dan catatan; dibuka dari menu Rekap
+- **Ekspor rekap ke Excel/PDF** (beririsan dengan Fase 9)
+- **Pembanding rekap manual dan rekap sistem** untuk periode yang sama
+Perlu keputusan: letak penyimpanan (folder arsip yang sama atau terpisah), skema tabel baru lewat migration, dan pencatatan audit.
 
 ## PHASE 9 — Import/Export P1
 - [ ] Wizard import Excel/CSV (preview, mapping, validasi, ringkasan)
@@ -103,7 +118,7 @@ Kriteria "selesai" untuk setiap checkpoint, fase, dan rilis MVP ada di `DEFINITI
 
 ## PHASE 12 — Testing P0 (berjalan sepanjang fase)
 - [ ] Acceptance test MVP lengkap
-- ⚠️ 199 unit test (23 file) — mencakup semua modul inti plus `permissions`, `searchQuery`, `pagination`, `expiry`, `dashboard` (statistik, pembangun query, geometri grafik, aktivitas) dan `dateHelpers`. Test mock-based pertama muncul di Fase 6 Checkpoint 6.4 (`folderSync`, `documents`, `storage-settings`). Masih belum ada integration test terhadap DB SQLite sungguhan, dan belum ada test komponen React sama sekali — lihat `DEFINITION_OF_DONE.md` bagian Piramida Test untuk rencananya.
+- ⚠️ 278 unit test (34 file) — mencakup semua modul inti plus `permissions`, `searchQuery`, `pagination`, `expiry`, `dashboard` (statistik, pembangun query, geometri grafik, aktivitas), `dateHelpers`, filter URL daftar izin, rekap (periode, tabel silang, pembangun query), penjagaan role dan query `audit-log`, serta runner migration. Test mock-based pertama muncul di Fase 6 Checkpoint 6.4 (`folderSync`, `documents`, `storage-settings`). Masih belum ada integration test terhadap DB SQLite sungguhan, dan belum ada test komponen React sama sekali — lihat `DEFINITION_OF_DONE.md` bagian Piramida Test untuk rencananya.
 
 ## PHASE 13 — Packaging P1
 - [ ] Installer Windows (.msi/.exe)
@@ -117,6 +132,7 @@ Setiap fase wajib memuat kuota Q-UI, Q-TEST, dan Q-DEBT (definisi di `DEFINITION
 | 5 | Penyeragaman UI + responsif semua halaman (dikerjakan sebelum kuota ini ada) | — | — |
 | 6 | Perbaikan tampilan field dinamis (label "0" hilang, select/multiselect tampil label asli, bukan JSON mentah) | Test mock-based pertama di codebase (`folderSync`/`documents`/`storage-settings`, Checkpoint 6.4) + `searchQuery.ts`/`pagination.ts` murni dengan test penuh | U-05, U-06, U-09, U-15, dan U-01 lanjutan (searchable) lunas; #1/#2/#3 (role, audit, path) lunas |
 | 7 | Dashboard dengan grafik buatan sendiri (tanpa library, mengikuti design system), empat keadaan halaman, label sebaran dua baris tidak lagi terpotong | `lib/dateHelpers.ts` (`daysUntil`, `deriveTahunBulan`) — modul lama tanpa test — kini bertest (Checkpoint 7.7a); test ini sekaligus menemukan ketergantungan zona waktu (#22) | #19 lunas (`@tanstack/react-table` dihapus); utang baru #20–#24 tercatat |
+| 8 | Halaman Rekapitulasi (tahun, tab periode, dasar tanggal, pengelompokan; angka menjadi tautan ke daftar terfilter); filter daftar izin bisa dibagikan lewat URL, plus opsi "Tanpa status" dan "Kelengkapan Tanggal" | `audit-log` (service roles 5 test, repository 4 test) dan runner migration `database/migrate.ts` (7 test) — keduanya modul lama tanpa test; test migrate menjaga agar migration kosong tidak menaikkan versi diam-diam | #21 dan #24 lunas; utang baru #25 tercatat |
 
 ---
 Update terakhir: dicatat di `CHANGELOG.md` setiap ada perubahan status fase.
