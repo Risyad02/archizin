@@ -6,6 +6,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/), dengan kategor
 ## [Unreleased]
 
 ### Added
+- Panduan `TUTORIAL-WINDOWS.md` berdasarkan baseline repository aktual: prasyarat, instalasi, alur admin/penyimpanan/login, pemeriksaan fitur, batas autentikasi dan build installer. README ditautkan ke panduan; tidak mengubah perilaku aplikasi atau menutup fase baru.
 - Dokumen Fase 0 (Discovery & Architecture): technology evaluation, architecture proposal, database proposal, UI/UX proposal, implementation plan
 - `ROADMAP.md`, `CLAUDE.md`, tutorial `06_GETTING_STARTED_TAURI.md` dan `07_FOUNDATION_WALKTHROUGH.md`
 - Fase 1 (Foundation) selesai: scaffold project Tauri v2 + React + TS, struktur folder modul, migration runner TypeScript + migration baseline `0001_init.sql` (19 tabel + index + seed roles/permit_status), setup ESLint (flat config)/typecheck/Vitest
